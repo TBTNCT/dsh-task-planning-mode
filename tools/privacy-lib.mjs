@@ -274,10 +274,19 @@ export function scanGitHistory(root, rs) {
         continue;
       }
       const lines = out.split('\n').filter(Boolean);
-      count += lines.length;
       for (const l of lines) {
-        if (samples.length >= 3) break;
-        samples.push({ line: 0, text: l.slice(0, 160) });
+        // git grep 的输出是 `<commit>:<path>:<lineno>:<该行内容>`；带 allow 白名单的规则
+        // 必须对内容再判一次，否则占位符（如 example.com / noreply）会被误报。
+        let hitCount = 1;
+        if (r.allow && r.allow.length) {
+          const m = /^[0-9a-f]{7,40}:(.*?):(\d+):([\s\S]*)$/.exec(l);
+          const content = m ? m[3] : l;
+          const hits = findInText(content, [r], 0);
+          hitCount = hits.length ? hits[0].count : 0;
+        }
+        if (hitCount === 0) continue;
+        count += hitCount;
+        if (samples.length < 3) samples.push({ line: 0, text: l.slice(0, 160) });
       }
     }
     if (count > 0) {
