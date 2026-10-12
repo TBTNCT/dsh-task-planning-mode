@@ -1,0 +1,73 @@
+# 「任务规划」模式 · DSH bundle 补丁（新版声明式 preset 机制，适用 DSH 0.2.x）
+#
+# 本文件把「任务规划」注册成一个 agent preset：
+#   插入一行 `@deepseek-ai/dsh-agent-preset`，它的 config 就是 preset 本体
+#   （id / name / description / order / plugins）；子插件行写在 config.plugins 里。
+#
+# 安装方式（人工，在桌面端 UI 里做，详见同目录 README.md）：
+#   桌面端侧栏「插件」→「添加插件」→ 粘贴本目录绝对路径 →「安装」→「立即启用」
+#
+# 机制提醒（来源：本机运行的 dsh-agent-preset-registry / dsh-agent-preset 的 README 与源码）：
+#   * registry 不扫描任何目录，也不接受 preset 路径 —— 旧机制的
+#     `.agent-presets\<id>\agent.cordis.yml` 在 0.2.x 上是死数据。
+#   * `config.plugins` 里每一行仍是普通 Cordis 插件行（含 `!!js`、`group`、`isolate`）。
+#   * preset 里提供服务的行与其消费方必须共享同一个 `cordis:group` 隔离 realm。
+
+- insert:
+    # 行 id（`preset-task-planning`）是 Loader 的编辑地址，用于按 id 写覆盖补丁；
+    # config.id（`task-planning`）才是会话保存与选择器内部使用的 preset 标识符。
+    - id: preset-task-planning
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: task-planning
+        name: 任务规划
+        description: 把模糊想法问清楚并拆成可执行的规划与提示词，自己不动手实现。
+        order: 5
+        plugins:
+          # ── identity ──────────────────────────────────────────────────────
+          # prefix 目前是占位文本，正式系统提示词在任务 04 写入。
+          # 不设 complete（否则会丢掉 DSH 的工具指引与运行上下文）。
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: >-
+                你是 DeepSeek Harness 的「任务规划」模式：把使用者的想法问清楚，拆成可执行的规划与提示词，
+                自己不动手实现任何东西。
+                （正式系统提示词见任务 04）
+              suffix: Your working directory is {{cwd}}.
+
+          # ── tools ─────────────────────────────────────────────────────────
+          # 模式必须会向使用者提问。
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+
+          # 文件读写编辑：read / write / edit。
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+
+          # 文件检索：glob / grep。
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+
+          # ── compaction ────────────────────────────────────────────────────
+          # 规划对话很长，必须有压缩。compaction-basic 会通过 ctx.get 读取
+          # toolResultPrune，因此裁剪器必须与它共享同一个 realm（isolate）。
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
