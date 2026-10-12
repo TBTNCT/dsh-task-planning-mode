@@ -110,10 +110,28 @@
             name: '@deepseek-ai/dsh-tool-jobs'
 
           # ── skills ────────────────────────────────────────────────────────
-          # skill-filesystem 提供 skill 来源，tool-skill 让模式能加载 skill；
-          # 任务 05 的文档模板将以 skill 形式随包分发。
+          # skill-filesystem 提供 skill 来源，tool-skill 让模式能加载 skill。
+          # 文档模板以 skill 形式随本包分发（任务 05）：`skills/planning-templates/SKILL.md`。
+          #
+          # 为什么不照官方创造模式的写法 `new URL('skills/', baseUrl)`：
+          #   * 官方那份 `agent.cordis.yml` 是**被 include 的子树**，Include 会把自身目录
+          #     设为该子树的 baseUrl（证据：dsh-app-boot/lib/index.js:140
+          #     `this.ctx.baseUrl = new URL(".", pathToFileURL(this.filename)).href`），
+          #     所以它写相对路径是对的。
+          #   * 本 bundle 的 cordis.patch.yml 是**补丁层**，不是被 include 的子树：
+          #     其行的 baseUrl 仍是 **profile 配置目录**（证据：dsh-app-boot/lib/index.js:1529
+          #     `ctx.baseUrl = pathToFileURL(dirname(absoluteConfigPath)).href + "/"`，
+          #     以及 :845-870 的 loadProfileDirectory 把补丁读出来再 compose 到 profile 根）。
+          #     所以 `new URL('skills/', baseUrl)` 会指到 profile 下 → 读不到本包的 skills/。
+          #   * 因此与同文件的 persona 行、token-estimator 行走**同一条解析基准**：
+          #     用 createRequire 按包名解析到本包的 package.json，再取同级的 `skills/` 目录。
+          #     这条路径不含任何绝对路径，可开源分发；实测见
+          #     docs/实施记录/05-模板接线记录.md §2。
           - id: skill-filesystem
             name: '@deepseek-ai/dsh-skill-filesystem'
+            config:
+              customSkillDirs:
+                - !!js "process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(new URL('noop.js', baseUrl)).resolve('dsh-task-planning-preset/package.json')), 'skills')"
 
           - id: tool-skill
             name: '@deepseek-ai/dsh-tool-skill'
@@ -194,3 +212,4 @@
 # 若人工验证后发现"触碰 + 重启"仍不生效，按同记录 §6 偏离 2 的回退判据改为内联。
 # 测完把哨兵值改回与本行一致的值，保持"文件里的值 = 实际生效的值"。
 # touch: 2026-10-12 sentinel v2 -> v3
+# touch: 2026-10-12 任务 05：skill-filesystem 加 customSkillDirs（挂 planning-templates）+ 哨兵 v3 -> v4

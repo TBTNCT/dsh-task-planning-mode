@@ -2,7 +2,27 @@
 
 > **适用**：DSH 0.2.x（声明式 preset：`@deepseek-ai/dsh-agent-preset` + `@deepseek-ai/dsh-agent-preset-registry`）
 > **不适用**：DSH 0.1.x 的目录机制（那套见 [`../task-planning/`](../task-planning/)，在本机运行版本上是死数据，见 [`../../docs/实施记录/01-预设机制冲突-运行时版本不符.md`](../../docs/实施记录/01-预设机制冲突-运行时版本不符.md)）
-> **本包不含任何 JavaScript**：它只提供一份组合补丁，preset 的子插件全部来自 DSH 安装自带的包。
+> **本包自带 4 样东西**（其余 preset 子插件全部来自 DSH 安装自带的包）：
+> ① `cordis.patch.yml`（组合补丁）；② `PROMPT.md`（模式系统提示词正文，任务 04，由 persona 行的 `!!js` 按包名读入）；
+> ③ `plugins/token-estimator/`（本地工具插件，任务 03，零第三方依赖）；④ `skills/planning-templates/`（规划文档模板 skill，任务 05）。
+
+## 〇、本包的文件清单
+
+```text
+task-planning-bundle/
+├── package.json                          # dsh.bundle.patch → ./cordis.patch.yml；包名 dsh-task-planning-preset
+├── cordis.patch.yml                      # insert 一行 @deepseek-ai/dsh-agent-preset（preset 本体）
+├── PROMPT.md                             # 模式系统提示词正文（13 小节 + 11 条硬约束 + 4 组 25 条作业纪律）
+├── plugins/token-estimator/index.js      # 本地工具：estimate_tokens / usage_report
+├── skills/planning-templates/SKILL.md    # 规划文档模板：5 类文档的【必须】/【可选】章节 + 可复制骨架
+└── README.md                             # 本文件
+```
+
+> 三处 `!!js` 走**同一条解析基准**（profile 的 `node_modules` 里有本包的 link，按包名解析）：
+> persona 读 `PROMPT.md`、`skill-filesystem` 的 `customSkillDirs` 取 `skills/`、`token-estimator` 按包名子路径挂载。
+> **都不要写相对路径** —— 补丁层行的 `baseUrl` 是 profile 配置目录，不是本目录（证据与实测见
+> [`../../docs/实施记录/04-提示词接线实测.md`](../../docs/实施记录/04-提示词接线实测.md) §2 与
+> [`../../docs/实施记录/05-模板接线记录.md`](../../docs/实施记录/05-模板接线记录.md) §2）。
 
 ## 一、这个包做了什么
 
@@ -14,7 +34,7 @@
 | `name` | `任务规划` | 选择器/设置页显示名 |
 | `description` | 把模糊想法问清楚并拆成可执行的规划与提示词，自己不动手实现。 | 显示说明 |
 | `order` | `5` | 列表排序（越小越靠前） |
-| `plugins` | persona + `agent-instructions` + `time-context` + `tool-bash`/`tool-pwsh`（平台二选一）+ `tool-fs` + `tool-fs-search` + `tool-jobs` + `skill-filesystem` + `tool-skill` + `tool-todo` + `tool-ask-user` + `tool-web` + `present` + compaction 组 | 子插件行（**任务 02 的标准档**：顶层 15 行 / 展开 18 行；任务 01 的最小集是它的 5 行子集） |
+| `plugins` | persona + `agent-instructions` + `time-context` + `tool-bash`/`tool-pwsh`（平台二选一）+ `tool-fs` + `tool-fs-search` + `tool-jobs` + `skill-filesystem` + `tool-skill` + `tool-ask-user` + `tool-todo` + `tool-web` + `present` + `token-estimator` + compaction 组 | 子插件行（**任务 02 的标准档**，任务 03 追加 `token-estimator`：现为**顶层 16 行 / 展开 19 行**；任务 01 的最小集是它的 5 行子集） |
 
 字段名与约束来自本机运行的 `@deepseek-ai/dsh-agent-preset` 源码（`lib/index.js`）：
 
@@ -115,6 +135,10 @@ pnpm now wants to use the store at "D:\.pnpm-store\v11" to link dependencies.
    —— 它会从安装树里逐个包提取 schema 的 `.required()` 字段核对，并与打包版 `standard.patch.yml` 对照。
    任务 02 起再加一支清单校验：`E:\node.exe %TEMP%\dsh-tp-01\validate-task02.cjs`
    —— 核"该挂的 14 行都挂了 / 禁用的 11 个包一个都没挂 / 只有 compaction 带 isolate / 三个裁剪阈值 / `!!js` 原文"。
-   两支都跑，全 PASS 才算文件级通过（**文件级通过 ≠ 能用**：运行方口径的判据是"重启后新开会话里模式正常且工具可见"，见 `docs/实施记录/02-工具实测表.md` §4.0）。
+   任务 05 再加一支 skill 校验（脚本源码留档在 [`../../docs/实施记录/05-模板接线记录.md`](../../docs/实施记录/05-模板接线记录.md) §5，可照抄重建）
+   —— 核"`customSkillDirs` 的 `!!js` 在真实 `baseUrl` 下求值到本包的 `skills/` + 运行方自带 provider 能发现并加载 `planning-templates` + 骨架关键特征齐全"。
+   三支都跑，全 PASS 才算文件级通过（**文件级通过 ≠ 能用**：运行方口径的判据是"重启后新开会话里模式正常且工具可见"，见 `docs/实施记录/02-工具实测表.md` §4.0）。
 7. 改完 `cordis.patch.yml` 后**重启桌面端**即可（`link:` 安装就地读文件，不需要重新安装）。
-6. 只从本仓库这一份安装；不要在别处 `pnpm add` 出一个副本，避免两份 patch 抢同一个 preset id。
+   注意：**只改 `PROMPT.md` 或只改 `skills/` 下的文件不会生效** —— preset 的重组代际只看**补丁文件**的 mtime+size，
+   而 `!!js` 只在挂载激活时求值一次。改完提示词或 skill 后，务必**同时触碰 `cordis.patch.yml`**（改动其中一行注释即可）。
+8. 只从本仓库这一份安装；不要在别处 `pnpm add` 出一个副本，避免两份 patch 抢同一个 preset id。

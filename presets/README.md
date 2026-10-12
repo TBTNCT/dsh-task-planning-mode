@@ -30,11 +30,14 @@ presets/
 ├── task-planning-bundle/           ← 新版交付物（0.2.x）
 │   ├── package.json                #   dsh.bundle.patch → ./cordis.patch.yml
 │   ├── cordis.patch.yml            #   insert: @deepseek-ai/dsh-agent-preset（task-planning）
+│   ├── PROMPT.md                   #   模式系统提示词正文（任务 04）
+│   ├── plugins/token-estimator/    #   本地工具插件：estimate_tokens / usage_report（任务 03）
+│   ├── skills/planning-templates/  #   规划文档模板 skill：5 类骨架（任务 05）
 │   └── README.md                   #   人工安装/卸载/更新步骤与硬约束
 └── task-planning/                  ← 旧机制产物（0.1.x，本机无效）
     ├── preset.yml
     ├── agent.cordis.yml
-    └── plugins/token-estimator/    #   任务 03 的占位空目录
+    └── plugins/token-estimator/    #   空目录（任务 03 的落点随机制改到 bundle，此目录未使用）
 ```
 
 ## 为什么两份都留着
