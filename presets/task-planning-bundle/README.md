@@ -49,6 +49,44 @@ static Config = z.object({
    - 若没有：**重启桌面端**再新开会话（未启用 HMR 的 profile，组合变更保留到重启）。
    - 若显示「加载失败」：插件页会有该组合包的报错，把原文抄回报告（铁律 11）。
 
+### ⚠️ 常见失败：`ERR_PNPM_UNEXPECTED_STORE`（本机已实测，修法已验证）
+
+现象原文：
+
+```text
+[ERR_PNPM_UNEXPECTED_STORE] Unexpected store location
+The dependencies at "<DSH_HOME>\profiles\desktop\node_modules" are currently linked from the store at "<DSH_HOME>\.pnpm-store\v11".
+pnpm now wants to use the store at "D:\.pnpm-store\v11" to link dependencies.
+```
+
+**原因**：profile 的 `node_modules` 是早先用 `<DSH_HOME>\.pnpm-store\v11` 装的；
+而桌面端自带的 pnpm（实测 **11.7.0**，宿主用 Electron 当 node 跑 `resources\runtime\pnpm\bin\pnpm.mjs`）
+在 profile 目录下解析出的是 `D:\.pnpm-store\v11` —— 只有 store **位置**不同，store 版本号相同。
+
+**修法（二选一，都必须人工做：前者在 profile 目录，后者是全局配置，都属铁律 12 禁区）**
+
+1. **推荐**：在 `<DSH_HOME>\profiles\desktop\pnpm-workspace.yaml` 末尾加一行（**必须是 camelCase 的 `storeDir`**）：
+
+   ```yaml
+   storeDir: <DSH_HOME>\.pnpm-store
+   ```
+
+   已用**自带 pnpm 11.7.0** 与**全局 pnpm 12.3.4** 双重复核：`pnpm store path` 均回到 `<DSH_HOME>\.pnpm-store\v11`。
+
+2. 全局配置（一行命令；影响本机所有 pnpm 项目，但只是把 store 钉回 profile 已在用的那个）：
+
+   ```powershell
+   pnpm config set store-dir <DSH_HOME>\.pnpm-store --global
+   ```
+
+**已实测无效、不要再试的写法**：
+
+- 项目 `.npmrc` 里写 `store-dir=…` 或 `storeDir=…`（pnpm 11.7.0 与 12.3.4 都忽略）；
+- `pnpm-workspace.yaml` 里写 kebab 的 `store-dir: …`（忽略）。
+
+**失败是安全回滚的**：本机实测，安装失败后 profile 的 `package.json` 里 `dependencies` 与 `dsh.profile.bundles`
+都没有残留（pnpm 的失败流程会恢复 `package.json` 与 `pnpm-lock.yaml`）。修好后再回到第二节第 2 步重试安装。
+
 > 命令行等价形式（本机没有全局 `dsh` 命令，仅作参考）：`dsh plugin --profile desktop add <本目录绝对路径>`
 
 ## 三、卸载与更新
