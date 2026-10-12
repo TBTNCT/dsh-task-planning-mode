@@ -34,8 +34,12 @@
   name: '@deepseek-ai/dsh-tool-fs'
 
 # 文件检索：glob / grep。
+# `sampleOverCapGlobResults` 在 0.1.5 与 0.2.x 的官方 standard 里都显式给了值，
+# 且 0.2.x 把它设为必填 —— 两个版本都写上，避免"加载失败"。
 - id: tool-fs-search
   name: '@deepseek-ai/dsh-tool-fs-search'
+  config:
+    sampleOverCapGlobResults: false
 
 # ── compaction ──────────────────────────────────────────────────────────────
 

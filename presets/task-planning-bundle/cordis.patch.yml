@@ -46,8 +46,12 @@
             name: '@deepseek-ai/dsh-tool-fs'
 
           # 文件检索：glob / grep。
+          # 注意：0.2.x 起 `sampleOverCapGlobResults` 是**必填**（z.boolean().required()），
+          # 缺了会让整个 preset「加载失败」→ 模式选择器里看不到它（实测：任务 01 第一版就踩了这个坑）。
           - id: tool-fs-search
             name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
 
           # ── compaction ────────────────────────────────────────────────────
           # 规划对话很长，必须有压缩。compaction-basic 会通过 ctx.get 读取

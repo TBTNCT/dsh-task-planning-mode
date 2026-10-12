@@ -174,6 +174,30 @@ class AgentPreset {
 
 ---
 
+### G2. 踩坑记录：**必填 config 字段**（2026-10-12 实测，教训）
+
+- **现象**：preset 在「设置 → Agent presets」的**自定义分组里能出现**（说明声明注册成功），
+  但带「加载失败」红标；**模式选择器里则完全看不到它**（客户端只列健康 preset：
+  `presetOptions()` = `presets.filter(preset => preset.broken === void 0)`）。
+  本机报错原文：
+  ```text
+  tool-fs-search (@deepseek-ai/dsh-tool-fs-search): invalid config:
+  - $.sampleOverCapGlobResults missing required value (at sampleOverCapGlobResults)
+  ```
+- **实测原因**：`@deepseek-ai/dsh-tool-fs-search` 在 0.2.x 把 `sampleOverCapGlobResults` 定为
+  `z.boolean().required()`（安装树 `…/dsh-tool-fs-search/lib/index.js:1218`）；0.1.5 时代它只是可选项，
+  旧文档里也没强调。
+- **规律**：**新版把不少 0.1.5 的可选项变成了必填**。写行之前必须读该包 `lib/index.js` 里
+  `Config = z.object({…})` 的定义，把带 `.required()` 的字段补齐；光看旧 `agent.cordis.yml` 抄会漏。
+- **工具**：`%TEMP%\dsh-tp-01\validate-bundle.cjs` 已实现「逐包提取必填字段 + 与 shipped standard 同名行对照」，
+  改完必跑（本机重跑：全部 PASS）。
+- **排查顺序建议**（下次直接从第 2 步开始，省半小时）：
+  1. 选择器里没有 → 先看**设置 → Agent presets**：有卡片但「加载失败」= 声明在、配置错；
+     连卡片都没有 = 声明没注册（查 bundle 是否在 `dsh.profile.bundles`、是否重启过）。
+  2. 「加载失败」的悬浮提示通常直接给出**哪个包、哪个字段**缺什么。
+
+---
+
 ## H. 复核命令（照抄可重放）
 
 ```powershell

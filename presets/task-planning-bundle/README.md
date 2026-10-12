@@ -107,4 +107,11 @@ pnpm now wants to use the store at "D:\.pnpm-store\v11" to link dependencies.
 3. `config.plugins` 里每行的 `id` 必须唯一；group 行的子行写在它的 `config` 列表里。
 4. preset 的服务提供方与其消费方要共享**同一个 realm**（本包的 `compaction` / `toolResultPruner`）。
 5. 行引用的包名必须存在于 DSH 安装（`asar/dsh/node_modules/...`）或 profile 的依赖里，否则该声明加载失败。
+6. **必填 config 字段必须给全（本机实测踩过的坑）**：0.2.x 把若干 0.1.5 时代可选的字段改成了必填，
+   例如 `@deepseek-ai/dsh-tool-fs-search` 的 **`sampleOverCapGlobResults`**（`z.boolean().required()`）。
+   少一个必填字段 → **整个 preset「加载失败」**：设置页「自定义」分组里能看到卡片但带「加载失败」红标，
+   而**模式选择器里完全看不到它**（选择器只列健康 preset）。
+   改完务必跑校验脚本：`E:\node.exe %TEMP%\dsh-tp-01\validate-bundle.cjs`
+   —— 它会从安装树里逐个包提取 schema 的 `.required()` 字段核对，并与打包版 `standard.patch.yml` 对照。
+7. 改完 `cordis.patch.yml` 后**重启桌面端**即可（`link:` 安装就地读文件，不需要重新安装）。
 6. 只从本仓库这一份安装；不要在别处 `pnpm add` 出一个副本，避免两份 patch 抢同一个 preset id。
