@@ -49,7 +49,12 @@ static Config = z.object({
    - 若没有：**重启桌面端**再新开会话（未启用 HMR 的 profile，组合变更保留到重启）。
    - 若显示「加载失败」：插件页会有该组合包的报错，把原文抄回报告（铁律 11）。
 
-### ⚠️ 常见失败：`ERR_PNPM_UNEXPECTED_STORE`（本机已实测，修法已验证）
+### ⚠️ 常见失败：`ERR_PNPM_UNEXPECTED_STORE`（本机已实测，修法已验证并**已应用**）
+
+> **本机现状（2026-10-12 12:57）**：修法 1 **已经应用**（`<DSH_HOME>\profiles\desktop\pnpm-workspace.yaml`
+> 已含 `storeDir: <DSH_HOME>\.pnpm-store`），并用自带 pnpm 11.7.0 与全局 12.3.4 双重复核通过
+> （`store path` → `<DSH_HOME>\.pnpm-store\v11`）。本节留档：**若你再次看到这个报错**，说明那一行不在了，
+> 按下面重新加回去即可。
 
 现象原文：
 
