@@ -7,9 +7,10 @@
   退出码 0 = 通过；1 = 有 block 级命中（或内部产物仍被跟踪）；2 = 用法/环境错误。
 
 .EXAMPLE
-  pwsh -File tools/privacy-check.ps1
-  pwsh -File tools/privacy-check.ps1 -All          # 连未跟踪文件一起扫
-  pwsh -File tools/privacy-check.ps1 -WorktreeOnly # 只扫工作区，不扫历史
+  powershell -File tools/privacy-check.ps1                # Windows PowerShell 5.1（本机实测可用）
+  powershell -File tools/privacy-check.ps1 -All           # 连未跟踪文件一起扫
+  powershell -File tools/privacy-check.ps1 -WorktreeOnly  # 只扫工作区，不扫历史
+  # 装了 PowerShell 7 的机器，把 powershell 换成 pwsh 即可
 #>
 [CmdletBinding()]
 param(
