@@ -4,3 +4,22 @@ node_modules/
 # 临时文件
 *.tmp
 *.tmpdir/
+
+# ── 开源隐私：以下内容绝不入库（规范见 docs/工作流程/10-开源前隐私与泄露检查.md）──
+
+# 本机隐私扫描的本地规则：含本机真实字面量（用户名 / 邮箱 / 盘符布局），只在本机存在
+tools/privacy-local-rules.json
+
+# DSH 沙箱 ACL 报告与恢复脚本：含本机用户 SID 与绝对路径，属机器专用产物
+**/.dsh-acl-report/
+**/acl-recovery/
+
+# 内部验证产物：不作为公开内容随仓库发布（08 任务书：不得当成正式样例）
+demo/_自测/
+demo/_自测-复测/
+demo/_验收/
+notepad-app/
+
+# 扫描 / 清洗的临时输出
+.privacy-*.log
+privacy-*.log

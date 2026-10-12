@@ -1,0 +1,30 @@
+{
+  "_comment": "本机规则模板。复制成 tools/privacy-local-rules.json 后填入【你自己机器】的字面量；该文件名已被 .gitignore 排除，绝不入库。这里的所有值都是假样例。",
+  "version": 1,
+  "rules": [
+    {
+      "id": "local-repo-path",
+      "label": "本仓库的绝对路径",
+      "severity": "block",
+      "pattern": "(?i)D:[\\\\/]work[\\\\/]my-project",
+      "replacement": "<REPO>",
+      "why": "把本仓库的绝对落点换成占位符。"
+    },
+    {
+      "id": "local-tool-root",
+      "label": "本机工具根目录",
+      "severity": "block",
+      "pattern": "(?i)D:[\\\\/]toolchain",
+      "replacement": "<TOOL_ROOT>",
+      "why": "换成占位符。"
+    },
+    {
+      "id": "local-email",
+      "label": "本人邮箱",
+      "severity": "block",
+      "pattern": "someone@example.com",
+      "replacement": "<EMAIL_REDACTED>",
+      "why": "通用邮箱规则之外再兜一层，防止写成不带 @ 的变体。"
+    }
+  ]
+}
