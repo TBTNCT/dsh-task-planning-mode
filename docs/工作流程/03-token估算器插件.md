@@ -6,6 +6,17 @@
 > **本任务产出**：`presets/task-planning/plugins/token-estimator/index.js`（+ 可选 `package.json`）、`agent.cordis.yml` 中的挂载行、`docs/实施记录/03-token估算器实测.md`、`docs/验收报告/03-报告.md`
 > **对话方式**：新建对话
 
+> ⚠️ **版本适用性警告（2026-10-12 追加，人工已授权标注；正文按原文保留）**
+> 本机运行时是**新版声明式 preset**，**preset 不再是一个目录**（注册表不扫描目录、不接受 preset 路径），
+> 因此本任务书里"`presets/task-planning/plugins/…` + 相对行 `name: './plugins/xxx'`"的思路**失去宿主**：
+> - 相对说明符只有**相对 patch 文件所在目录**才有意义（新 `cordis.patch.yml` 在 `presets/task-planning-bundle/` 下），
+>   而"bundle 里的相对行能否被加载器解析"在本机**未实测**（见 `docs/调研/03-preset机制-新版.md` G 节）。
+> - **开工前必须先做最小挂载实验**：在 bundle 包内放一个最小 JS 行，用相对 `./lib/xxx.js` 引用，重启桌面端后看
+>   「设置 → Agent presets」是否加载成功；成功再按此写正式插件，失败就改用"独立 npm 包 + 行名用包名"的方案。
+> - 任务 01 的教训：**必填 config 字段**、**跨版本抄配置**、**装成功≠能用**，都要在这里重演一遍防住
+>   （取用 `docs/经验/01-任务01实战失误清单.md` 的硬约束候选）。
+> - **本任务用标准模式对话执行**（模式约束只作用于选中「任务规划」的会话）。
+
 ---
 
 ## 一、任务目标
