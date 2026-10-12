@@ -1,0 +1,6 @@
+# 依赖目录（不提交）
+node_modules/
+
+# 临时文件
+*.tmp
+*.tmpdir/

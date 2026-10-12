@@ -1,0 +1,7 @@
+# 「任务规划」模式的展示元数据。
+# DSH 只读取 name / description / order 三个键，其它键静默忽略；
+# id 来自目录名、trust 来自根目录，这两项不能写在这里。
+# order 只在同一个 preset 根内排序：用户根整体排在随包集合之后。
+name: 任务规划
+description: 把模糊想法问清楚并拆成可执行的规划与提示词，自己不动手实现。
+order: 5
