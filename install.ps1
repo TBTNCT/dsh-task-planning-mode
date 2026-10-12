@@ -27,9 +27,11 @@
   只演示将要做什么，不复制、不创建任何文件。
 
 .EXAMPLE
-  powershell -ExecutionPolicy Bypass -File install.ps1
-  powershell -ExecutionPolicy Bypass -File install.ps1 -DshHome 'E:\dshtest\home'
-  powershell -ExecutionPolicy Bypass -File install.ps1 -LegacyCopy -Force
+  # 注意：-File 的相对路径按「当前工作目录」解析，所以要先 cd 到仓库根目录（或用脚本的绝对路径）。
+  cd <仓库根>
+  powershell -ExecutionPolicy Bypass -File .\install.ps1
+  powershell -ExecutionPolicy Bypass -File .\install.ps1 -DshHome 'E:\dshtest\home'
+  powershell -ExecutionPolicy Bypass -File .\install.ps1 -LegacyCopy -Force
 #>
 [CmdletBinding()]
 param(

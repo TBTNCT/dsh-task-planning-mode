@@ -64,8 +64,13 @@ asar 内 `@deepseek-ai/dsh-web-app@0.2.1-alpha.1`）。本模式以 **bundle 包
 
 **用脚本做前置校验**（不会替你点界面，只检查环境并把要粘贴的路径打印出来）：
 
+> ⚠️ **本节所有 `powershell -File` 命令都要在「仓库根目录」下运行。**
+> `-File` 的相对路径是按**当前工作目录**解析的，不在仓库根会直接报
+> 「`-File` 形式参数的实际参数 "install.ps1" 不存在」。先 `cd` 到本仓库根目录，或者用脚本的**绝对路径**。
+
 ```powershell
-powershell -ExecutionPolicy Bypass -File install.ps1
+cd <本仓库根目录>
+powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 **没出现怎么办**：先重启桌面端再新开会话（组合变更通常要重启才加载）；若插件页显示「加载失败」，
@@ -79,8 +84,10 @@ powershell -ExecutionPolicy Bypass -File install.ps1
 > 只有 0.1.x 需要这条。
 
 ```powershell
+# 先 cd 到本仓库根目录（-File 的相对路径按当前目录解析）
+cd <本仓库根目录>
 # 把仓库里的旧机制目录复制到 DSH 用户层预设根
-powershell -ExecutionPolicy Bypass -File install.ps1 -LegacyCopy
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -LegacyCopy
 ```
 
 手动等价写法（Windows PowerShell）：
@@ -109,11 +116,14 @@ Copy-Item -LiteralPath $src -Destination (Split-Path -Parent $dst) -Recurse -For
 ### 卸载
 
 ```powershell
-# 删掉用户层副本（先打印路径，再确认，最后才删）
-powershell -ExecutionPolicy Bypass -File uninstall.ps1
+# 先 cd 到本仓库根目录（-File 的相对路径按当前目录解析）
+cd <本仓库根目录>
 
-# 只看看会删什么
-powershell -ExecutionPolicy Bypass -File uninstall.ps1 -WhatIf
+# 只看看会删什么（不真删）
+powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -WhatIf
+
+# 删掉用户层副本（先打印路径，再确认，最后才删）
+powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 ```
 
 用插件管理器装的 bundle 包，要在**桌面端 →「插件」→ 该组合包卡片 → 卸载**（这一步会改 profile，脚本不代做）。

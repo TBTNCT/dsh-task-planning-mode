@@ -24,9 +24,11 @@
   只演示将删除什么，不删任何东西。
 
 .EXAMPLE
-  powershell -ExecutionPolicy Bypass -File uninstall.ps1 -WhatIf
-  powershell -ExecutionPolicy Bypass -File uninstall.ps1
-  powershell -ExecutionPolicy Bypass -File uninstall.ps1 -Yes
+  # 注意：-File 的相对路径按「当前工作目录」解析，所以要先 cd 到仓库根目录（或用脚本的绝对路径）。
+  cd <仓库根>
+  powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -WhatIf
+  powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
+  powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -Yes
 #>
 [CmdletBinding()]
 param(

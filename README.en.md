@@ -72,8 +72,14 @@ In the DSH **desktop app**:
 
 **Pre-flight helper** (it will not click the UI for you — it only checks the environment and prints the path to paste):
 
+> ⚠️ **Every `powershell -File` command in this section must be run from the repository root.**
+> `-File` resolves a relative path against the **current working directory**; anywhere else you get
+> `The argument "install.ps1" for the -File parameter does not exist`. Either `cd` to the repository root
+> first, or pass the script's **absolute path**.
+
 ```powershell
-powershell -ExecutionPolicy Bypass -File install.ps1
+cd <repository root>
+powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 **If the mode does not appear**: restart the desktop app, then open a new session (composition changes usually need a
@@ -88,7 +94,9 @@ restart). If the plugin page says "load failed", copy the raw error text before 
 > (evidence: `docs/实施记录/01-预设机制冲突-运行时版本不符.md`). Only 0.1.x needs this route.
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File install.ps1 -LegacyCopy
+# cd to the repository root first (-File resolves relative paths against the current directory)
+cd <repository root>
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -LegacyCopy
 ```
 
 Manual equivalent (Windows PowerShell):
@@ -118,11 +126,14 @@ In the profile's `cordis.patch.yml`, add `roots: [{ path: <presets dir inside th
 ### Uninstalling
 
 ```powershell
-# Removes the user-layer copy (prints the path, asks for confirmation, then deletes)
-powershell -ExecutionPolicy Bypass -File uninstall.ps1
+# cd to the repository root first (-File resolves relative paths against the current directory)
+cd <repository root>
 
 # Dry run: show what would be deleted
-powershell -ExecutionPolicy Bypass -File uninstall.ps1 -WhatIf
+powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -WhatIf
+
+# Removes the user-layer copy (prints the path, asks for confirmation, then deletes)
+powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 ```
 
 For a bundle installed through the plugin manager, uninstall it in **desktop app → Plugins → that bundle's card →
