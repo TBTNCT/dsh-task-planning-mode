@@ -37,15 +37,30 @@
         order: 5
         plugins:
           # ── identity ──────────────────────────────────────────────────────
-          # prefix 目前是占位文本，正式系统提示词在任务 04 写入。
+          # 正式系统提示词正文 = 同目录的 PROMPT.md（任务 04 写入，约 7.4k 汉字）。
           # 不设 complete（否则会丢掉 DSH 的工具指引与运行上下文）。
+          #
+          # 为什么 prefix 用这条 !!js，而不是任务书正文写的 `new URL('PROMPT.md', baseUrl)`：
+          #   * loader 的 !!js 求值器是 `new Function("ctx","expr","with (ctx){return eval(expr)}")`
+          #     （证据：@deepseek-ai/cordis-plugin-loader/lib/index.js:289），
+          #     所以 `baseUrl` 确实在作用域里 —— 但它的值是 **profile 配置目录**，
+          #     不是本文件所在目录（证据：dsh-app-boot/lib/index.js:1529
+          #     `ctx.baseUrl = pathToFileURL(dirname(absoluteConfigPath)).href + "/"`）。
+          #   * 本 bundle 的 cordis.patch.yml 是**补丁层**，不是被 include 的子树：
+          #     loadProfileDirectory 读出它、composeEntries 把它应用到 profile 根 entry list
+          #     （证据：dsh-app-boot/lib/index.js:845-870 与 `dsh.profile.bundles` 的处理），
+          #     所以相对 baseUrl 会指到 profile 目录下 → 读不到 PROMPT.md。
+          #   * 实测原文（任务 04 机器等价实验，见 docs/实施记录/04-提示词接线实测.md §2）：
+          #     `readFileSync(new URL('PROMPT.md', baseUrl))` → ENOENT: open
+          #     '<DSH_HOME>\profiles\desktop\PROMPT.md'
+          #   * 因此改成**按包名解析**：与同一文件里插件行
+          #     `name: dsh-task-planning-preset/plugins/token-estimator/index.js`
+          #     走的是同一条解析基准（profile 的 node_modules 里有本 bundle 的 link）。
+          #     实测：解析到真实 bundle 目录并读出正文（同记录 §2 B1/B2/C1-C3）。
           - id: persona
             name: '@deepseek-ai/dsh-persona'
             config:
-              prefix: >-
-                你是 DeepSeek Harness 的「任务规划」模式：把使用者的想法问清楚，拆成可执行的规划与提示词，
-                自己不动手实现任何东西。
-                （正式系统提示词见任务 04）
+              prefix: !!js "process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:module').createRequire(new URL('noop.js', baseUrl)).resolve('dsh-task-planning-preset/PROMPT.md'), 'utf8')"
               suffix: Your working directory is {{cwd}}.
 
           # ── 指令文件 ──────────────────────────────────────────────────────
