@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   开源前隐私与凭据门禁（薄包装，实际扫描由 tools/privacy-scan.mjs 完成）。
 

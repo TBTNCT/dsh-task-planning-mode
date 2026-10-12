@@ -12,7 +12,7 @@
 task-planning-bundle/
 ├── package.json                          # dsh.bundle.patch → ./cordis.patch.yml；包名 dsh-task-planning-preset
 ├── cordis.patch.yml                      # insert 一行 @deepseek-ai/dsh-agent-preset（preset 本体）
-├── PROMPT.md                             # 模式系统提示词正文（13 小节 + 11 条硬约束 + 4 组 25 条作业纪律）
+├── PROMPT.md                             # 模式系统提示词正文（13 小节 + 12 条硬约束 + 4 组 25 条作业纪律）
 ├── plugins/token-estimator/index.js      # 本地工具：estimate_tokens / usage_report
 ├── skills/planning-templates/SKILL.md    # 规划文档模板：5 类文档的【必须】/【可选】章节 + 可复制骨架
 └── README.md                             # 本文件
@@ -131,12 +131,16 @@ pnpm now wants to use the store at "D:\.pnpm-store\v11" to link dependencies.
    例如 `@deepseek-ai/dsh-tool-fs-search` 的 **`sampleOverCapGlobResults`**（`z.boolean().required()`）。
    少一个必填字段 → **整个 preset「加载失败」**：设置页「自定义」分组里能看到卡片但带「加载失败」红标，
    而**模式选择器里完全看不到它**（选择器只列健康 preset）。
-   改完务必跑校验脚本：`E:\node.exe %TEMP%\dsh-tp-01\validate-bundle.cjs`
-   —— 它会从安装树里逐个包提取 schema 的 `.required()` 字段核对，并与打包版 `standard.patch.yml` 对照。
-   任务 02 起再加一支清单校验：`E:\node.exe %TEMP%\dsh-tp-01\validate-task02.cjs`
-   —— 核"该挂的 14 行都挂了 / 禁用的 11 个包一个都没挂 / 只有 compaction 带 isolate / 三个裁剪阈值 / `!!js` 原文"。
-   任务 05 再加一支 skill 校验（脚本源码留档在 [`../../docs/实施记录/05-模板接线记录.md`](../../docs/实施记录/05-模板接线记录.md) §5，可照抄重建）
-   —— 核"`customSkillDirs` 的 `!!js` 在真实 `baseUrl` 下求值到本包的 `skills/` + 运行方自带 provider 能发现并加载 `planning-templates` + 骨架关键特征齐全"。
+   改完务必跑校验脚本。三支校验当时都是**临时产物**（跑完即删，不随仓库发布），源码留档在各任务的
+   实施记录与验收报告里，可按需照抄重建（用本机任意 Node ≥ 20 跑即可）：
+
+   - **bundle 校验**：从安装树里逐个包提取 schema 的 `.required()` 字段核对，并与打包版 `standard.patch.yml` 对照；
+   - **清单校验**（任务 02 起）：核"该挂的 14 行都挂了 / 禁用的 11 个包一个都没挂 / 只有 compaction 带 isolate /
+     三个裁剪阈值 / `!!js` 原文"；
+   - **skill 校验**（任务 05 起）：核"`customSkillDirs` 的 `!!js` 在真实 `baseUrl` 下求值到本包的 `skills/` +
+     运行方自带 provider 能发现并加载 `planning-templates` + 骨架关键特征齐全"；
+     （脚本源码留档在 [`../../docs/实施记录/05-模板接线记录.md`](../../docs/实施记录/05-模板接线记录.md) §5）
+
    三支都跑，全 PASS 才算文件级通过（**文件级通过 ≠ 能用**：运行方口径的判据是"重启后新开会话里模式正常且工具可见"，见 `docs/实施记录/02-工具实测表.md` §4.0）。
 7. 改完 `cordis.patch.yml` 后**重启桌面端**即可（`link:` 安装就地读文件，不需要重新安装）。
    注意：**只改 `PROMPT.md` 或只改 `skills/` 下的文件不会生效** —— preset 的重组代际只看**补丁文件**的 mtime+size，
