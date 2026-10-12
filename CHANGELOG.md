@@ -7,22 +7,32 @@
 
 ## [未发布]
 
-### 发布前待办（由使用者本人确认/执行）
+### 发布记录（2026-10-12 已完成）
 
-- [ ] **确认署名**：`LICENSE` 里的版权人当前是 `这里有只小西琳`。若要改成 GitHub 用户名、或改成
-      「`这里有只小西琳` and `dsh-task-planning-mode contributors`」这种集体署名，**发布前改这一处**，
-      并同步 `presets/task-planning-bundle/package.json` 的 `author` 字段与 `README.zh.md` / `README.en.md` 的「许可」小节。
-      （规范依据：`docs/优化提示词/02-开源前隐私规范.md` §一 —— 个人签名允许但不强制。）
-- [ ] **GitHub 登录**：`gh auth login`（浏览器授权，只能由使用者本人完成）。
-- [ ] **建仓库并推送**：`gh repo create` + 首次 `git push`，再打 tag `v1.0.0`、`gh release create v1.0.0`。
-- [x] **安装演练 A 段（真实路径）已完成**：2026-10-12 由使用者本人执行，5 条判据全过
-      （卸载 → 重启后模式消失 → 重装并启用 → 重启后模式出现、无「加载失败」、哨兵答 `v8` → 无重复项）。
-      记录见 [`docs/验收报告/08-安装演练报告.md`](docs/验收报告/08-安装演练报告.md)。
-      **注意**：任务书原本的判据（"删掉用户层副本 → 模式重新出现"）基于 0.1.x 旧机制，**在本机 0.2.x 上不成立**
+- [x] **确认署名**：`LICENSE` 版权人 = `这里有只小西琳`（个人笔名署名）。
+      规范依据：`docs/优化提示词/02-开源前隐私规范.md` §一 —— **个人签名允许但不强制**。
+      若要改成集体署名，改 `LICENSE` + `README.zh.md` / `README.en.md` 的「许可」小节 + 本文件。
+- [x] **GitHub 登录**：`gh auth login --hostname github.com --git-protocol https --web`（账号 `TBTNCT`）。
+- [x] **推送前隐私门**：`node tools/privacy-scan.mjs` → **block 命中 0**，退出码 0。
+- [x] **建仓库并推送**：<https://github.com/TBTNCT/dsh-task-planning-mode>（**public**，默认分支 `main`，
+      GitHub 识别协议 = **MIT**）。
+- [x] **打 tag 与发 Release**：`v1.0.0` → <https://github.com/TBTNCT/dsh-task-planning-mode/releases/tag/v1.0.0>。
+- [x] **发布后验证**：把远端仓库**克隆回来复扫** —— block 命中 **0**、48 个提交的作者只剩中性身份
+      （`dsh-task-planning-mode contributors <noreply@example.com>` / `dsh-agent <agent@local>`）、
+      内部产物被跟踪 **0** 个。
+- [x] **全局 git 身份改为 GitHub noreply**（方案 A）：
+      `user.name = 这里有只小西琳`、`user.email = 325988531+TBTNCT@users.noreply.github.com`
+      —— 避免今后每建一个新仓库都重新泄露真实邮箱。
+- [x] **安装演练 A 段（真实路径）**：5 条判据全过（卸载 → 重启后模式消失 → 重装并启用 →
+      重启后模式出现、无「加载失败」、哨兵答 `v8` → 无重复项）。记录见
+      [`docs/验收报告/08-安装演练报告.md`](docs/验收报告/08-安装演练报告.md)。
+      **注意**：任务书原本的判据（"删掉用户层副本 → 模式重新出现"）基于 0.1.x 旧机制，**在 0.2.x 上不成立**
       （用户层副本是死数据，删了模式照旧在），故拆成两段。
+
+### 仍待办（可选）
+
 - [ ] **安装演练 B 段（可选）**：删掉用户层副本 → 新开会话确认模式**仍在**（实测"死数据"结论）→ 用
       `install.ps1 -LegacyCopy -Force` 重建。
-- [ ] **推送前再跑一次隐私门**：`node tools/privacy-scan.mjs`（退出码 0）。
 
 ---
 
