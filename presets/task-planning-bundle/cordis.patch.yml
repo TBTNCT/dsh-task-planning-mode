@@ -153,3 +153,21 @@
           # 规划模式"不实现"，产出物必须能被单独打开查看：present 用来把文件列为交付物。
           - id: present
             name: '@deepseek-ai/dsh-tool-present'
+
+          # ── 自带本地工具插件：token 估算器（任务 03）────────────────────────
+          # 提供 estimate_tokens（静态低-高区间 + 两个阈值判断）与 usage_report
+          # （运行时计量优先、静态兜底，永不抛错）。
+          #
+          # 行名用「包名子路径」而不是相对路径 `./plugins/...`：
+          #   loader 解析相对行名是 `new URL(name, ctx.baseUrl)`，而 baseUrl 是
+          #   **profile 配置目录**（证据：@deepseek-ai/dsh-app-boot/lib/index.js:1529
+          #   `ctx.baseUrl = pathToFileURL(dirname(absoluteConfigPath)).href + "/"`），
+          #   所以相对 `./plugins/...` 会指到 profile 下、而不是 bundle 里。
+          #   本机既有本地 bundle（dsh-boot-animation / dsh-whale-widget）也都是用
+          #   **裸包名**挂载，同一条解析路径。实测见
+          #   docs/实施记录/03-token估算器实测.md 的 E1/E3 两节。
+          #
+          # 插件实现只用 `node:` 内置模块、零第三方依赖（bundle 目录向上没有
+          # node_modules，裸包导入必然 ERR_MODULE_NOT_FOUND，见同记录 E2 一节）。
+          - id: token-estimator
+            name: dsh-task-planning-preset/plugins/token-estimator/index.js

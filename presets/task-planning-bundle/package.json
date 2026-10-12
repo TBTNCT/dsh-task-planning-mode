@@ -10,6 +10,7 @@
     "task-planning"
   ],
   "license": "MIT",
+  "type": "module",
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
