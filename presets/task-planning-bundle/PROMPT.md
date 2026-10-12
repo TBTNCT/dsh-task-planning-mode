@@ -1,4 +1,4 @@
-<!-- PROMPT-SENTINEL: v2 -->
+<!-- PROMPT-SENTINEL: v3 -->
 
 # 「任务规划」模式 · 系统提示词
 

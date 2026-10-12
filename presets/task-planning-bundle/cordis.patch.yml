@@ -186,3 +186,11 @@
           # node_modules，裸包导入必然 ERR_MODULE_NOT_FOUND，见同记录 E2 一节）。
           - id: token-estimator
             name: dsh-task-planning-preset/plugins/token-estimator/index.js
+
+# ── 生效口径测试（2026-10-12）────────────────────────────────────────────────
+# 此行是「触碰」标记：把 PROMPT.md 的哨兵从 v2 改成 v3 时，一并改这一行，
+# 令本文件的 mtime + size 变化，从而触发 preset 重组、让 persona 的 !!js 重新读一次 PROMPT.md。
+# 生效口径的判据见 docs/实施记录/04-提示词接线实测.md §7 第 5–6 步（需人工重启 + 新开会话）。
+# 若人工验证后发现"触碰 + 重启"仍不生效，按同记录 §6 偏离 2 的回退判据改为内联。
+# 测完把哨兵值改回与本行一致的值，保持"文件里的值 = 实际生效的值"。
+# touch: 2026-10-12 sentinel v2 -> v3
