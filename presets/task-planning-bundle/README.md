@@ -14,7 +14,7 @@
 | `name` | `任务规划` | 选择器/设置页显示名 |
 | `description` | 把模糊想法问清楚并拆成可执行的规划与提示词，自己不动手实现。 | 显示说明 |
 | `order` | `5` | 列表排序（越小越靠前） |
-| `plugins` | persona + `tool-ask-user` + `tool-fs` + `tool-fs-search` + compaction 组 | 子插件行（任务 01 的最小集） |
+| `plugins` | persona + `agent-instructions` + `time-context` + `tool-bash`/`tool-pwsh`（平台二选一）+ `tool-fs` + `tool-fs-search` + `tool-jobs` + `skill-filesystem` + `tool-skill` + `tool-todo` + `tool-ask-user` + `tool-web` + `present` + compaction 组 | 子插件行（**任务 02 的标准档**：顶层 15 行 / 展开 18 行；任务 01 的最小集是它的 5 行子集） |
 
 字段名与约束来自本机运行的 `@deepseek-ai/dsh-agent-preset` 源码（`lib/index.js`）：
 
@@ -113,5 +113,8 @@ pnpm now wants to use the store at "D:\.pnpm-store\v11" to link dependencies.
    而**模式选择器里完全看不到它**（选择器只列健康 preset）。
    改完务必跑校验脚本：`E:\node.exe %TEMP%\dsh-tp-01\validate-bundle.cjs`
    —— 它会从安装树里逐个包提取 schema 的 `.required()` 字段核对，并与打包版 `standard.patch.yml` 对照。
+   任务 02 起再加一支清单校验：`E:\node.exe %TEMP%\dsh-tp-01\validate-task02.cjs`
+   —— 核"该挂的 14 行都挂了 / 禁用的 11 个包一个都没挂 / 只有 compaction 带 isolate / 三个裁剪阈值 / `!!js` 原文"。
+   两支都跑，全 PASS 才算文件级通过（**文件级通过 ≠ 能用**：运行方口径的判据是"重启后新开会话里模式正常且工具可见"，见 `docs/实施记录/02-工具实测表.md` §4.0）。
 7. 改完 `cordis.patch.yml` 后**重启桌面端**即可（`link:` 安装就地读文件，不需要重新安装）。
 6. 只从本仓库这一份安装；不要在别处 `pnpm add` 出一个副本，避免两份 patch 抢同一个 preset id。
