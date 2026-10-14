@@ -27,13 +27,12 @@
 ```text
 presets/
 ├── README.md                       ← 本文件
-├── task-planning-bundle/           ← 新版交付物（0.2.x）＝ npm 包 dsh-task-planning-preset 的全部内容
-│   ├── package.json                #   dsh.bundle.patch → ./cordis.patch.yml；files 白名单（任务 09）
+├── task-planning-bundle/           ← 新版交付物（0.2.x）
+│   ├── package.json                #   dsh.bundle.patch → ./cordis.patch.yml
 │   ├── cordis.patch.yml            #   insert: @deepseek-ai/dsh-agent-preset（task-planning）
 │   ├── PROMPT.md                   #   模式系统提示词正文（任务 04）
 │   ├── plugins/token-estimator/    #   本地工具插件：estimate_tokens / usage_report（任务 03）
 │   ├── skills/planning-templates/  #   规划文档模板 skill：5 类骨架（任务 05）
-│   ├── LICENSE                     #   MIT（与仓库根逐字一致，任务 09 随包分发）
 │   └── README.md                   #   人工安装/卸载/更新步骤与硬约束
 └── task-planning/                  ← 旧机制产物（0.1.x，本机无效）
     ├── preset.yml

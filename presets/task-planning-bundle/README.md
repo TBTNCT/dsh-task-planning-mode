@@ -9,21 +9,14 @@
 ## 〇、本包的文件清单
 
 ```text
-task-planning-bundle/                     ← 本目录就是 npm 包 dsh-task-planning-preset 的全部内容
-├── package.json                          # name=dsh-task-planning-preset；dsh.bundle.patch → ./cordis.patch.yml
+task-planning-bundle/
+├── package.json                          # dsh.bundle.patch → ./cordis.patch.yml；包名 dsh-task-planning-preset
 ├── cordis.patch.yml                      # insert 一行 @deepseek-ai/dsh-agent-preset（preset 本体）
 ├── PROMPT.md                             # 模式系统提示词正文（13 小节 + 12 条硬约束 + 4 组 25 条作业纪律）
 ├── plugins/token-estimator/index.js      # 本地工具：estimate_tokens / usage_report
 ├── skills/planning-templates/SKILL.md    # 规划文档模板：5 类文档的【必须】/【可选】章节 + 可复制骨架
-├── README.md                             # 本文件
-└── LICENSE                               # MIT（与仓库根 LICENSE 逐字一致，sha256 已复核）
+└── README.md                             # 本文件
 ```
-
-> **发布清单由 `package.json` 的 `files` 白名单锁死**（任务 09）：
-> `PROMPT.md` / `README.md` / `LICENSE` / `cordis.patch.yml` / `plugins/` / `skills/` ——
-> 共 **7 个文件**（npm 另会自动带上 `package.json` 自身）。
-> `npm pack --dry-run` 实测清单与 `git ls-files presets/task-planning-bundle` **完全一致**；
-> 临时产物（如 `.tmp-*/`）**不在白名单里**，放进去也不会进包。
 
 > 三处 `!!js` 走**同一条解析基准**（profile 的 `node_modules` 里有本包的 link，按包名解析）：
 > persona 读 `PROMPT.md`、`skill-filesystem` 的 `customSkillDirs` 取 `skills/`、`token-estimator` 按包名子路径挂载。
@@ -59,26 +52,6 @@ static Config = z.object({
 
 ## 二、安装（**人工操作**，铁律 11/12：AI 不写 `profiles\`）
 
-> **两条路，选一条。** 两条路装的是**同一份东西**（本目录），区别只在"包从哪来"。
-> 无论走哪条，**都要自己点界面**（AI 不代做），且装完通常还要**重启桌面端**。
-
-### 路线 1：从 npm 装（最省事）
-
-本包的 npm 包名是 **`dsh-task-planning-preset`**（<https://www.npmjs.com/package/dsh-task-planning-preset>）。
-**若那个页面还打不开，说明尚未发布** —— 走下面的"路线 2"即可，效果一样。
-在 DSH **桌面端**里：
-
-1. 左侧栏点 **插件** → **添加插件**。
-2. 包名输入框里输入 `dsh-task-planning-preset`（要钉版本就写 `dsh-task-planning-preset@1.0.0`）。
-3. 等界面读出包名与版本，点 **安装**，等 pnpm 跑完。
-4. 点 **立即启用**（或回插件列表打开开关）。
-5. **重启桌面端**，再**新开会话**：模式选择器里应出现「**任务规划**」。
-
-> **这不等于"装完即可用"**：npm 只省掉了"克隆仓库 + 粘贴本机路径"，
-> 而"安装 → 启用 → 重启 → 新开会话"一步都少不了（理由见 `docs/实施记录/09-npm壳包评估.md` §3）。
-
-### 路线 2：装本地目录（不走 npm）
-
 在 DSH **桌面端**里：
 
 1. 左侧栏点 **插件**（`ui-plugin-manager` 页面）。
@@ -89,9 +62,8 @@ static Config = z.object({
    <REPO>\presets\task-planning-bundle
    ```
 
-   （安装对话框接受「包名（可带版本）、Git 地址、压缩包或本地绝对路径」，本地路径会直接读本目录的 `package.json`。
-   ⚠️ **相对路径会被拒绝**：插件管理器要求本地路径必须是绝对路径。）
-4. 等 Host 读出 `dsh-task-planning-preset` 与版本号，点 **安装**，等 pnpm 跑完。
+   （安装对话框接受「包名（可带版本）、Git 地址、压缩包或本地绝对路径」，本地路径会直接读本目录的 `package.json`。）
+4. 等 Host 读出 `dsh-task-planning-preset` 与版本 `0.1.0`，点 **安装**，等 pnpm 跑完。
 5. 安装完成界面点 **立即启用**（或回插件列表打开该组合包的开关）。
 6. **新开一个会话**，模式选择器里应出现「**任务规划**」。
    - 若没有：**重启桌面端**再新开会话（未启用 HMR 的 profile，组合变更保留到重启）。
@@ -147,9 +119,6 @@ pnpm now wants to use the store at "D:\.pnpm-store\v11" to link dependencies.
 - **卸载**：插件页 → 该组合包卡片 → 卸载（会从 `dsh.profile.bundles` 移除并 `pnpm remove`；AI 不代做）。
 - **更新**：改完 `cordis.patch.yml` 后重新安装（官方说明：插件安装后暂不支持自动更新，升级需先卸载再装新版）。
   本地路径安装时，改动通常随**重启桌面端**加载，但以插件页显示的状态为准。
-- **npm 路线的版本**：npm 上装到的版本由**发布时**的 `package.json.version` 决定（当前 `1.0.0`）。
-  仓库里的文件更新了但**没有重新 `npm publish`** 时，npm 用户装到的仍是旧版 ——
-  这是本任务（09）唯一的长期维护负担，改版时必须记得发（见 `docs/实施记录/09-npm壳包实施.md` §5）。
 
 ## 四、改这个包时的硬约束（与任务书一致）
 

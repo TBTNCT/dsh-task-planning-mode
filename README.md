@@ -14,7 +14,7 @@
 
 | 步骤 | 做什么 |
 |---|---|
-| 1. 装 | DSH 0.2.x：桌面端 →「插件」→「添加插件」→ 输入 `dsh-task-planning-preset` → 安装 → 立即启用 → **重启桌面端**。**若 npm 页面还打不开（尚未发布）**，改成粘贴 `presets/task-planning-bundle/` 的绝对路径。详见 [README.zh.md](README.zh.md) 第三节 |
+| 1. 装 | DSH 0.2.x：桌面端 →「插件」→「添加插件」→ 粘贴 `presets/task-planning-bundle/` 的绝对路径 → 安装 → 立即启用。详见 [README.zh.md](README.zh.md) 第三节 |
 | 2. 用 | 新开会话 → 模式选择器选「**任务规划**」→ 直接说你的想法 → 回答它的提问 → 说「**停，开始规划**」 |
 | 3. 做 | 按产出里的 `docs/工作流程/00-总览与使用说明.md`，**一个任务一个新对话**，整段复制每个任务文件第三节的提示词 |
 
@@ -47,7 +47,7 @@
 | 06 硬性约束验收与偏差修复（门） | ✅ 完成 |
 | 07 Demo · 末日避难所挂机（门） | ⬜ 未开始 |
 | 08 开源化与发布 | ✅ 完成（已发布：<https://github.com/TBTNCT/dsh-task-planning-mode> · `v1.0.0` Release） |
-| 09（可选）npm 壳包 | 🔄 机器侧完成（`dsh-task-planning-preset@1.0.0` 已打包验证、7 个文件、PASS 16/0）；**发布与"装完模式出现"待人工** |
+| 09（可选）npm 壳包 | ⬜ 未开始 |
 
 进度以 [`docs/优化提示词/执行进度.md`](docs/优化提示词/执行进度.md) 为准。
 
@@ -67,8 +67,7 @@
 ## 目录结构
 
 ```text
-presets/task-planning-bundle/  模式本体（0.2.x 交付物，也是 npm 包 dsh-task-planning-preset 的全部内容：
-                               package.json + cordis.patch.yml + PROMPT.md + plugins/ + skills/ + LICENSE）
+presets/task-planning-bundle/  模式本体（0.2.x 交付物：cordis.patch.yml + PROMPT.md + plugins/ + skills/）
 presets/task-planning/         0.1.x 旧机制留档（本机不生效，仅作对照）
 tools/                         开源前隐私门禁（privacy-scan / privacy-sanitize / privacy-check）
 install.ps1 / uninstall.ps1    安装与卸载脚本（不含任何个人绝对路径）
@@ -95,4 +94,4 @@ demo/_自测*/、demo/_验收/       内部验证产物：**不随仓库发布**
 ---
 
 *本仓库的规划文档（`docs/`）与模式本体（`presets/task-planning-bundle/`）均已完成并通过硬约束验收；
-当前处于「可选任务 09 · npm 壳包」阶段（包已就绪，等待人工发布）。*
+当前处于「开源化与发布」阶段（任务 08）。*

@@ -46,10 +46,6 @@ What you get:
   contribute tools, prompts and skills to an agent, but a browser UI requires a separate client package wired into the
   host composition.)
 - ❌ **It is not a one-command install.** See below.
-  (**Updated 2026-10-14**: distribution got simpler — the mode is published to npm, so the plugin manager needs only a
-  **package name**. But "installed" to "the mode appears in the selector" still takes
-  **install → enable → restart the desktop app → open a new session**, so this README still will not claim
-  "install and it just works".)
 
 ---
 
@@ -58,38 +54,10 @@ What you get:
 > Before you install: **a preset's trust level is equivalent to shell access.** Installing one means allowing it to
 > assemble arbitrary tool compositions on your machine. **Only install presets from sources you trust.**
 
-### Route A (simplest, recommended): install from npm
+### Route A (recommended, verified on the maintainer's machine): install the bundle via the plugin manager
 
-For **DSH 0.2.x**. The mode's npm package name is **`dsh-task-planning-preset`**
-(<https://www.npmjs.com/package/dsh-task-planning-preset>). **If that page does not open yet, this version has not
-been published** — use **Route B** (install the local directory) instead; the result is identical.
-
-In the DSH **desktop app**:
-
-1. Click **Plugins** in the left sidebar.
-2. Click **Add plugin** (or **Install third-party plugin** in the arrow menu).
-3. Type this into the package field:
-
-   ```text
-   dsh-task-planning-preset
-   ```
-
-   (Pin a version with `dsh-task-planning-preset@1.0.0`. The plugin manager asks the registry about the package
-   *before* installing anything, so an unknown name fails immediately with `not-found` and downloads nothing.)
-4. Wait until the UI shows the package and its version, click **Install**, and let pnpm finish.
-5. Click **Enable now** (or flip the switch for that bundle in the plugin list).
-6. **Open a new session.** "任务规划" (Task Planning) should appear in the mode selector.
-
-**The mode may not be visible immediately after this step**: composition changes in DSH usually need a **restart of the
-desktop app** to load (whether HMR is enabled was not measured). If it is missing, restart, then open a new session.
-
-> **Installing is not the end of it**: this route only removes "clone the repository and paste a local absolute path".
-> The steps **install → enable → restart → new session** remain — because DSH presets are **declarative**: the mode's
-> identity is a row in the profile composition, not a file in some directory.
-
-### Route B (no npm): install the local directory via the plugin manager
-
-For people who **would rather not use npm**, or who **already cloned this repository**.
+For **DSH 0.2.x** (measured host version: `@deepseek-ai/dsh-desktop 0.2.0-rc.2`, with
+`@deepseek-ai/dsh-web-app@0.2.1-alpha.1` inside the asar). This mode ships as a **bundle package**.
 
 In the DSH **desktop app**:
 
@@ -97,8 +65,7 @@ In the DSH **desktop app**:
 2. Click **Add plugin** (or **Install third-party plugin** in the arrow menu).
 3. Paste the **absolute path of this repository's `presets/task-planning-bundle/` directory** into the package field.
    (The dialog accepts a package name with optional version, a Git URL, an archive, or a local absolute path;
-   a local path reads that directory's `package.json` directly.
-   ⚠️ **Relative paths are rejected**: the plugin manager requires a local path to be absolute.)
+   a local path reads that directory's `package.json` directly.)
 4. Wait until the UI shows package `dsh-task-planning-preset` and its version, click **Install**, and let pnpm finish.
 5. Click **Enable now** (or flip the switch for that bundle in the plugin list).
 6. **Open a new session.** "任务规划" (Task Planning) should appear in the mode selector.
@@ -120,7 +87,7 @@ restart). If the plugin page says "load failed", copy the raw error text before 
 `ERR_PNPM_UNEXPECTED_STORE` install error, see section 2 of
 [`presets/task-planning-bundle/README.md`](presets/task-planning-bundle/README.md).
 
-### Route C (DSH 0.1.x legacy mechanism): copy the directory into the user layer
+### Route B (DSH 0.1.x legacy mechanism): copy the directory into the user layer
 
 > ⚠️ **Measured: this route does not work on DSH 0.2.x.** The 0.2.x preset registry **does not scan any directory**,
 > so a copy placed there is dead data that will never show up in the mode selector
@@ -171,18 +138,6 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 
 For a bundle installed through the plugin manager, uninstall it in **desktop app → Plugins → that bundle's card →
 Uninstall** (that step writes to the profile, so the script deliberately does not do it).
-
-### What if this npm package is taken down tomorrow?
-
-**You can still install it.** npm is just **an extra distribution channel**, not a new landing mechanism — the package
-contains the same thing as `presets/task-planning-bundle/` in this repository. So:
-
-1. Package unpublished → use **Route B**: clone this repository and paste the absolute path of
-   `presets/task-planning-bundle/` into the plugin manager;
-2. Repository unreachable too → use any local copy (a zip, a directory someone sent you) through that same
-   "paste the absolute path" install.
-
-**There is no npm-only path** — because the npm package carries nothing that exists only in it.
 
 ---
 
@@ -290,8 +245,7 @@ Acknowledgements:
 ## 10. Repository layout and document language
 
 ```text
-presets/task-planning-bundle/   The mode itself (0.2.x deliverable, and the entire npm package
-                                dsh-task-planning-preset): package.json + cordis.patch.yml + PROMPT.md + plugins/ + skills/ + LICENSE
+presets/task-planning-bundle/   The mode itself (0.2.x deliverable): cordis.patch.yml + PROMPT.md + plugins/ + skills/
 presets/task-planning/          0.1.x legacy mechanism, kept for reference (does not work on 0.2.x)
 tools/                          Pre-open-source privacy gate: privacy-scan / privacy-sanitize / privacy-check
 install.ps1 / uninstall.ps1     Install and uninstall scripts (contain no personal absolute paths)
