@@ -1,6 +1,6 @@
 {
   "name": "dsh-task-planning-preset",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "DSH「任务规划」模式：以声明式 preset（@deepseek-ai/dsh-agent-preset）注册一个只做规划、自己不动手实现的 Agent 组合",
   "keywords": [
     "dsh",
@@ -11,6 +11,26 @@
   ],
   "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TBTNCT/dsh-task-planning-mode.git",
+    "directory": "presets/task-planning-bundle"
+  },
+  "homepage": "https://github.com/TBTNCT/dsh-task-planning-mode#readme",
+  "bugs": {
+    "url": "https://github.com/TBTNCT/dsh-task-planning-mode/issues"
+  },
+  "files": [
+    "PROMPT.md",
+    "README.md",
+    "LICENSE",
+    "cordis.patch.yml",
+    "plugins/",
+    "skills/"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"

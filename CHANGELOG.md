@@ -7,6 +7,19 @@
 
 ## [未发布]
 
+### 新增（任务 09 · 可选 · npm 壳包）
+
+- **npm 包 `dsh-task-planning-preset@1.0.0`**：包根就是 `presets/task-planning-bundle/`（同一份内容，不新建壳包）。
+  - `package.json` 新增 `files` 白名单（`PROMPT.md` / `README.md` / `LICENSE` / `cordis.patch.yml` / `plugins/` / `skills/`）、
+    `repository` / `homepage` / `bugs` / `publishConfig.access: public`，版本 `0.1.0 → 1.0.0`；
+    **保留 `dsh.bundle.patch`**（0.2.x 的 preset 落地机制，去掉会让插件管理器判为 `not-a-bundle`）。
+  - 包内新增 `LICENSE`（MIT，与仓库根逐字一致）。
+  - `npm pack` 实测 **7 个文件 / 43466 B**，与 `git ls-files presets/task-planning-bundle` 一致，无临时产物、无个人路径。
+- **安装路线重排**（三份 README）：**A** 从 npm 按包名装 → **B** 插件管理器装本地目录 → **C** DSH 0.1.x 旧机制（留档）。
+  新增专节说明 **npm 包被下架后仍可安装**（走路线 B）。
+- **文档**：`docs/实施记录/09-npm壳包评估.md`（评估：任务书前提与 0.2.x 机制的三处冲突 + 形态取舍）、
+  `docs/实施记录/09-npm壳包实施.md`（原始证据）、`docs/验收报告/09-npm包安装报告.md`（含人工发布/验收回填栏）。
+
 ### 发布记录（2026-10-12 已完成）
 
 - [x] **确认署名**：`LICENSE` 版权人 = `这里有只小西琳`（个人笔名署名）。
@@ -31,6 +44,9 @@
 
 ### 仍待办（可选）
 
+- [ ] **npm 发布（任务 09，需人工）**：本机 `npm whoami` → `ENEEDAUTH`（未登录）。确认 `npm pack --dry-run`
+      清单（`docs/实施记录/09-npm壳包实施.md` §3）后执行 `npm login` + `npm publish .\presets\task-planning-bundle`，
+      再按包名安装并重启验证模式出现（回填 `docs/验收报告/09-npm包安装报告.md` §六）。
 - [ ] **安装演练 B 段（可选）**：删掉用户层副本 → 新开会话确认模式**仍在**（实测"死数据"结论）→ 用
       `install.ps1 -LegacyCopy -Force` 重建。
 

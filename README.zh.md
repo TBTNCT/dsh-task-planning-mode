@@ -39,6 +39,9 @@
 - ❌ **不能携带浏览器 UI**（**推导，未做运行时验证**：DSH 的 preset 机制只能给 agent 加工具/提示词/skill，
   加浏览器界面要另做一个客户端包并挂到宿主组合里）。
 - ❌ **不是"一条命令装完"**。见下面的安装说明。
+  （**2026-10-14 更新**：分发渠道简化了——已发布到 npm，插件管理器里**打一个包名**就能装；
+  但"装完"到"模式出现在选择器里"仍然要**安装 → 启用 → 重启桌面端 → 新开会话**这几步，
+  所以本文仍然不会写"装完即可用"。）
 
 ---
 
@@ -47,17 +50,46 @@
 > 安装前先看：**preset 的信任等级等价于 shell 访问**。装一个 preset = 允许它在你机器上组装任意工具组合。
 > **只装你信任的来源。**
 
-### 路线 A（推荐，本机实测可用）：用插件管理器装 bundle 包
+### 路线 A（最省事，推荐）：从 npm 装
 
-适用 **DSH 0.2.x**（本机桌面端实测版本：宿主 `@deepseek-ai/dsh-desktop 0.2.0-rc.2`，
-asar 内 `@deepseek-ai/dsh-web-app@0.2.1-alpha.1`）。本模式以 **bundle 包**形式分发。
+适用 **DSH 0.2.x**。本模式的 npm 包名是 **`dsh-task-planning-preset`**
+（<https://www.npmjs.com/package/dsh-task-planning-preset>）。**若那个页面还打不开，说明本版本尚未发布** ——
+那就走**路线 B**（装本地目录），效果完全一样。
+
+在 DSH **桌面端**里：
+
+1. 左侧栏点 **插件**。
+2. 点 **添加插件**（或箭头菜单里的 **安装第三方插件**）。
+3. 在包名输入框里输入：
+
+   ```text
+   dsh-task-planning-preset
+   ```
+
+   （想钉住某个版本就写 `dsh-task-planning-preset@1.0.0`。插件管理器会在装之前先向 registry 问一次这个包，
+   读不到会直接报 `not-found`，不会下载任何东西。）
+4. 等界面读出包名与版本，点 **安装**，等 pnpm 跑完。
+5. 点 **立即启用**（或回插件列表打开该组合包的开关）。
+6. **新开一个会话**，模式选择器里应出现「**任务规划**」。
+
+**这一步之后模式**不一定**立刻可见**：DSH 的组合包变更通常要**重启桌面端**才加载（是否启用 HMR 未实测）。
+没出现就先重启，再新开会话。
+
+> **装完不是"就完事了"**：这条路线省掉的只是"克隆仓库 + 粘贴本机绝对路径"，
+> 而"安装 → 启用 → 重启 → 新开会话"这几步一步都少不了——因为 DSH 的 preset 是**声明式**的，
+> 模式的身份来自 profile 组合里的一行声明，不是某个目录里的一份文件。
+
+### 路线 B（不走 npm）：用插件管理器装本地目录
+
+适合**不想用 npm**、或**已经克隆了本仓库**的人。
 
 在 DSH **桌面端**里：
 
 1. 左侧栏点 **插件**。
 2. 点 **添加插件**（或箭头菜单里的 **安装第三方插件**）。
 3. 在包名输入框里粘贴**本仓库 `presets/task-planning-bundle/` 目录的绝对路径**。
-   （对话框接受"包名（可带版本）、Git 地址、压缩包或本地绝对路径"，本地路径会直接读该目录的 `package.json`。）
+   （对话框接受"包名（可带版本）、Git 地址、压缩包或本地绝对路径"，本地路径会直接读该目录的 `package.json`。
+   ⚠️ **相对路径会被拒绝**：插件管理器要求本地路径必须是绝对路径。）
 4. 等界面读出包名 `dsh-task-planning-preset` 与版本号，点 **安装**，等 pnpm 跑完。
 5. 点 **立即启用**（或回插件列表打开该组合包的开关）。
 6. **新开一个会话**，模式选择器里应出现「**任务规划**」。
@@ -77,7 +109,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1
 把报错原文抄下来再排查。安装报 `ERR_PNPM_UNEXPECTED_STORE` 的修法见
 [`presets/task-planning-bundle/README.md`](presets/task-planning-bundle/README.md) 第二节。
 
-### 路线 B（DSH 0.1.x 旧机制）：复制目录到用户层
+### 路线 C（DSH 0.1.x 旧机制）：复制目录到用户层
 
 > ⚠️ **本机实测：这条路在 DSH 0.2.x 上无效。** 0.2.x 的 preset 注册表**不扫描任何目录**，
 > 复制过去的那份是死数据，永远不会出现在模式选择器里（证据：`docs/实施记录/01-预设机制冲突-运行时版本不符.md`）。
@@ -127,6 +159,16 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 ```
 
 用插件管理器装的 bundle 包，要在**桌面端 →「插件」→ 该组合包卡片 → 卸载**（这一步会改 profile，脚本不代做）。
+
+### 如果这个 npm 包被下架了，还能装吗？
+
+**能。** npm 只是**多出来的一条分发渠道**，不是新的落地机制——包里的内容与仓库里
+`presets/task-planning-bundle/` **是同一份东西**。所以：
+
+1. 包下架 → 走**路线 B**：克隆本仓库，把 `presets/task-planning-bundle/` 的绝对路径粘进插件管理器；
+2. 连仓库也访问不了 → 从任何一份本地副本（zip、别人转发的目录）走同一条"粘贴绝对路径"安装。
+
+**不存在"只有 npm 一条路"的情况**——因为 npm 包不携带任何只有它才有的东西。
 
 ---
 
@@ -226,7 +268,8 @@ Copyright (c) 2026 这里有只小西琳
 ## 十、仓库结构与文档语言
 
 ```text
-presets/task-planning-bundle/   模式本体（0.2.x 交付物）：cordis.patch.yml + PROMPT.md + plugins/ + skills/
+presets/task-planning-bundle/   模式本体（0.2.x 交付物，也是 npm 包 dsh-task-planning-preset 的全部内容）：
+                                package.json + cordis.patch.yml + PROMPT.md + plugins/ + skills/ + LICENSE
 presets/task-planning/          0.1.x 旧机制留档（本机不生效，仅作对照）
 tools/                          开源前隐私门禁：privacy-scan / privacy-sanitize / privacy-check
 install.ps1 / uninstall.ps1     安装与卸载脚本（不含任何个人绝对路径）
