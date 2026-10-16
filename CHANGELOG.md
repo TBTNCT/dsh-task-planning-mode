@@ -5,11 +5,11 @@
 
 ---
 
-## [未发布]
+## [1.1.0] - 2026-10-16
 
 ### 变更
 
-- **删除「单任务 2 亿 token」限额标准**（2026-10-16）：
+- **删除「单任务 2 亿 token」限额标准**：
   - 插件 `presets/task-planning-bundle/plugins/token-estimator/index.js`：删掉 `TASK_LIMIT = 200_000_000`
     常量、`triggers.taskLimit` 字段与相关判定文案；`estimate_tokens` 只判断**「单对话 6000 万」一个阈值**
     （输出 schema 同步收窄、工具描述同步改，调用方拿不到 `taskLimit` 了）。
@@ -21,6 +21,30 @@
   - 保留的阈值只有：**单任务预估 > 6000 万 → 必须二次拆分**（含估算表落盘要求，未动）。
   - 历史记录（`docs/实施记录/`、`docs/验收报告/`、`docs/经验/`、`docs/工作流程/` 任务书）**按原样保留**：
     它们记录的是当时口径，不作追改。
+
+### 文档
+
+- `docs/优化提示词/00-插件提示词-token估算器.md`（可单独拖入对话使用的接口契约）第 35 行删除
+  「2 亿/单任务」返回项，§五 验收项由「两个阈值判断」改为「6000 万阈值判断」，并加了一行变更注记。
+
+### 发布记录（2026-10-16）
+
+- [x] 改动落地后的**机器验证**：`node --check` 通过；三组输入实跑 `estimate_tokens`，返回不含 `taskLimit`、
+  对声明输出 schema 校验通过；`cordis.patch.yml` 解析通过且与改前结构逐字等价（16 行插件 id 完整）。
+- [x] **推送前隐私门**：`node tools/privacy-scan.mjs` → **block 命中 0**（退出码 0）。首次扫描曾报 4 处
+      `windows-user-path` 命中，均为**未推送**的本地提交里的家目录写法（`<盘符>:\Users\<用户名>\…`，
+      用户名本就是占位符、无真实个人信息），已按本仓库规范统一改写为 `%USERPROFILE%` 后复扫通过。
+      **注意**：本条发布记录第一次写的时候，把那个字面量原样抄了进来，复扫又报 1 处 —— 已改写为
+      不带盘符的写法，并 `git commit --amend` + `git push --force-with-lease` 修正（tag `v1.1.0` 同步重建）。
+      教训：**发布记录里不要抄敏感字面量，要抄也抄成不含盘符/用户名的形式**。
+- [x] **打 tag 与发 Release**：`v1.1.0` → <https://github.com/TBTNCT/dsh-task-planning-mode/releases/tag/v1.1.0>。
+- [x] **发布后验证**：把远端仓库**克隆回来复扫** → block 命中 **0**；`PROMPT.md` 首行哨兵 = `v9`；
+      远端提交作者只剩中性身份（`dsh-task-planning-mode contributors <noreply@example.com>` /
+      `dsh-agent <agent@local>`）。
+
+---
+
+## [未发布]
 
 ### 发布记录（2026-10-12 已完成）
 
