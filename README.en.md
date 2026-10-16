@@ -27,7 +27,7 @@ What you get:
 | `docs/工作流程/` task files | One file per task, each containing a **copy-paste-ready prompt**; one task = one new conversation |
 | `docs/优化提示词/01-通用规范.md` | Your project's own ground rules, read before every task |
 | `docs/优化提示词/执行进度.md` | The single source of truth across sessions: status, commit hash, key numbers |
-| Token estimate table | Per-task low/high range, plus whether it crosses the 60M / 200M thresholds |
+| Token estimate table | Per-task low/high range, plus whether it crosses the 60M threshold |
 | Execution order | "Do this first, then that", every step with a workspace-relative path |
 
 > Note: the mode's own prompts and generated documents are written in **Chinese**. The mode is designed for

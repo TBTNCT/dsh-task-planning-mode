@@ -3,7 +3,7 @@
  *
  * 提供两个工具：
  *   - estimate_tokens：按可解释的静态公式给出 token 低-高区间，并判断是否触发
- *     「单对话 6000 万 / 单任务 2 亿」两个阈值。
+ *     「单对话 6000 万」阈值。
  *   - usage_report：优先读运行时计量（本会话已用 token），读不到时降级为静态对照。
  *
  * ── 为什么本文件只用 `node:` 内置模块、一个裸包都不 import ──────────────────────
@@ -63,8 +63,8 @@ export const inject = ["tools"];
 
 /** 单对话上限：6000 万 token，超过必须二次拆分。 */
 const CONVERSATION_LIMIT = 60_000_000;
-/** 单任务上限：2 亿 token，超过必须告知使用者并取得确认。 */
-const TASK_LIMIT = 200_000_000;
+// 注：曾有的「单任务 2 亿」上限已按使用者要求删除，不再是判断标准；
+// 若今后要恢复，须同时改回 PROMPT.md 的硬约束 ③ 与 §七/§八/§十五（口径必须一处不留地同步）。
 
 const BASE_TOKENS_PER_TASK = 700_000;
 const READ_TOKENS_PER_CODE_LINE = 8;
@@ -169,18 +169,12 @@ function estimate(stage, scaleRaw) {
   const total = Math.round(((low + high) / 2) * RETRY_FACTOR);
 
   const conversationLimit = total > CONVERSATION_LIMIT;
-  const taskLimit = total > TASK_LIMIT;
 
   const verdicts = [];
   verdicts.push(
     conversationLimit
       ? `⚠️ 触发「单对话 ${fmt(CONVERSATION_LIMIT)}」阈值：必须二次拆分后再执行。`
       : `未触发「单对话 ${fmt(CONVERSATION_LIMIT)}」阈值。`,
-  );
-  verdicts.push(
-    taskLimit
-      ? `⚠️ 触发「单任务 ${fmt(TASK_LIMIT)}」阈值：必须告知使用者并取得确认后才能继续。`
-      : `未触发「单任务 ${fmt(TASK_LIMIT)}」阈值。`,
   );
 
   const basis = [
@@ -207,7 +201,6 @@ function estimate(stage, scaleRaw) {
     },
     triggers: {
       conversationLimit,
-      taskLimit,
     },
     verdicts,
     basis,
@@ -315,7 +308,7 @@ const ESTIMATE_TOKENS_TOOL = {
   name: "estimate_tokens",
   description:
     "按可解释的静态公式估算一个阶段/任务的 token 消耗：给出低-高区间与保守合计，并判断是否触发" +
-    "「单对话 6000 万」「单任务 2 亿」两个阈值。用于把「拍脑袋估 token」换成有依据的区间估算。" +
+    "「单对话 6000 万」阈值。用于把「拍脑袋估 token」换成有依据的区间估算。" +
     "这是估算不是承诺。",
   parameters: {
     type: "object",
@@ -354,7 +347,6 @@ const ESTIMATE_TOKENS_TOOL = {
       }),
       triggers: obj({
         conversationLimit: { type: "boolean" },
-        taskLimit: { type: "boolean" },
       }),
       verdicts: { type: "array", items: { type: "string" } },
       basis: { type: "array", items: { type: "string" } },
