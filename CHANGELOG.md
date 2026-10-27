@@ -43,7 +43,17 @@
   共用硬规则新增第 11 条「并行必须收口」；落盘前核对 **10 → 11 条**（新增版本迭代核对）。
 - `README.zh.md` / `README.en.md`：使用流程按版本迭代重写（版本规划表 → 逐版本提问 → 每版确认书 →
   总确认书），补「可并行任务可同时开 2–3 个会话、但必须过组装验收」；产出表补版本迭代规划表一行。
-- `presets/task-planning-bundle/README.md`：文件清单标注哨兵 `v10`、小节数更正为 15。
+- `presets/task-planning-bundle/README.md`：文件清单标注哨兵 `v10`、小节数更正为 15；
+  安装步骤里的版本号 `0.1.0` → `1.2.0`（与 `package.json` 同步）。
+- `presets/task-planning-bundle/package.json`：**补齐 npm 发布所需字段** ——
+  `version` `0.1.0 → 1.2.0`（与仓库 tag / Release 对齐，避免「npm 上是 0.1.0、GitHub 上是 v1.2.0」）；
+  新增 `repository`（`git+https://github.com/TBTNCT/dsh-task-planning-mode.git`，
+  `directory: presets/task-planning-bundle`，市场按它把 npm 包与仓库关联，不匹配则判定为未发布）；
+  新增 `engines.dsh: ">=0.2.0-0 <0.3.0-0"`（市场索引 format 1 要求每版本必须声明；
+  `-0` 前缀是为了让 rc/alpha 预发布版也能满足，不加会静默排除所有预发布运行时）；
+  新增 `files` 白名单（`PROMPT.md` / `cordis.patch.yml` / `plugins/` / `skills/`），把打包内容钉死。
+  **实测**：`npm pack` 出 6 个文件 / 45 KB，在隔离目录装回后用 DSH 的 `createRequire` 解析路径复核，
+  `PROMPT.md`（哨兵 `v10`）、`package.json`、`skills/`、插件行全部可解析。
 - `presets/task-planning-bundle/cordis.patch.yml`：新增 `touch` 记录（哨兵 `v9 -> v10`，用于触发 preset 重组）；
   persona 段补注释「**不要写 `suffix`（`{{cwd}}` 未注册）**」。
 - `docs/实施记录/12-Release草稿-v1.2.0.md`（新增）：本版 Release 正文成文，格式对齐 `07` / `10` 两份草稿。
