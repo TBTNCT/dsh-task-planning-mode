@@ -12,7 +12,7 @@
 task-planning-bundle/
 ├── package.json                          # dsh.bundle.patch → ./cordis.patch.yml；包名 dsh-task-planning-preset
 ├── cordis.patch.yml                      # insert 一行 @deepseek-ai/dsh-agent-preset（preset 本体）
-├── PROMPT.md                             # 模式系统提示词正文（13 小节 + 12 条硬约束 + 4 组 25 条作业纪律）
+├── PROMPT.md                             # 模式系统提示词正文（15 小节 + 12 条硬约束 + 4 组 25 条作业纪律，哨兵 v10）
 ├── plugins/token-estimator/index.js      # 本地工具：estimate_tokens / usage_report
 ├── skills/planning-templates/SKILL.md    # 规划文档模板：5 类文档的【必须】/【可选】章节 + 可复制骨架
 └── README.md                             # 本文件

@@ -23,12 +23,13 @@ What you get:
 
 | Output | What it is |
 |---|---|
-| Requirements confirmation | A read-back of "here is what I understand you want", so you can catch misunderstandings before any work starts |
+| Requirements confirmation | A read-back of "here is what I understand you want", so you can catch misunderstandings before any work starts; **one per version, plus a single overall confirmation at the end** |
+| Version iteration plan | Splits the project into versions by capability stage (skeleton → core capability → wrap-up/acceptance) and **gets your sign-off on the split before asking version by version** |
 | `docs/工作流程/` task files | One file per task, each containing a **copy-paste-ready prompt**; one task = one new conversation |
 | `docs/优化提示词/01-通用规范.md` | Your project's own ground rules, read before every task |
 | `docs/优化提示词/执行进度.md` | The single source of truth across sessions: status, commit hash, key numbers |
 | Token estimate table | Per-task low/high range, plus whether it crosses the 60M threshold |
-| Execution order | "Do this first, then that", every step with a workspace-relative path |
+| Execution order | "Do this first, then that", every step with a workspace-relative path; **the version dependency graph marks which tasks can run in parallel** |
 
 > Note: the mode's own prompts and generated documents are written in **Chinese**. The mode is designed for
 > Chinese-speaking users; this English README describes it for everyone else.
@@ -145,12 +146,22 @@ Uninstall** (that step writes to the profile, so the script deliberately does no
 
 1. **Open a new session** and pick "任务规划" in the mode selector.
 2. **Just describe your idea** in plain words. No jargon, no structure required.
-3. **Answer its questions.** It uses the `ask_user_question` tool to ask 3–10 questions at a time, each with options
-   and trade-offs, up to 6 rounds, until the 9-item requirements checklist is full.
-4. When you have had enough, **say "停，开始规划"** ("stop, start planning").
-5. It first gives you a **requirements confirmation**; once you confirm, it produces the planning documents.
-6. Then: **open `docs/工作流程/00-总览与使用说明.md` and follow its order — one task per new conversation.**
-   Copy the prompt from section 3 of each task file into the new conversation.
+3. **First look at the "version iteration plan" table it gives you.** It splits your project into versions by
+   capability stage (skeleton → core capability → wrap-up/acceptance) and asks whether that split is right.
+   **If you say no, it revises the split before asking anything else.**
+4. **Answer its questions one version at a time.** It asks about a single version per pass, using the
+   `ask_user_question` tool: **3–9 questions per round, at most 9 rounds per version** (so 3 questions minimum,
+   81 maximum), each with options and trade-offs, filling that **version's own** 9-item checklist.
+5. After each version it gives you **that version's requirements confirmation**; once you confirm, it moves on to
+   the next version automatically.
+6. When you have had enough, **say "停，开始规划"** ("stop, start planning") — this applies to the **whole project**,
+   you do not need to say it once per version.
+7. When every version is done (or you stop it), it gives you **one overall confirmation**; once you confirm, it
+   produces the planning documents.
+8. Then: **open `docs/工作流程/00-总览与使用说明.md` and follow its order — one task per new conversation.**
+   Copy the prompt from section 3 of each task file into the new conversation. **Tasks marked "parallelisable" can
+   run in 2–3 conversations at once**, but every parallel batch is followed by an **assembly acceptance** task that
+   has to pass before that batch really counts as done.
 
 > Two rules people skip most often:
 > ① **one task = one new conversation** (clean context, stable results);

@@ -37,7 +37,7 @@
         order: 5
         plugins:
           # ── identity ──────────────────────────────────────────────────────
-          # 正式系统提示词正文 = 同目录的 PROMPT.md（任务 04 写入，约 7.4k 汉字）。
+          # 正式系统提示词正文 = 同目录的 PROMPT.md（任务 04 写入，约 9.9k 汉字）。
           # 不设 complete（否则会丢掉 DSH 的工具指引与运行上下文）。
           #
           # 为什么 prefix 用这条 !!js，而不是任务书正文写的 `new URL('PROMPT.md', baseUrl)`：
@@ -57,11 +57,17 @@
           #     `name: dsh-task-planning-preset/plugins/token-estimator/index.js`
           #     走的是同一条解析基准（profile 的 node_modules 里有本 bundle 的 link）。
           #     实测：解析到真实 bundle 目录并读出正文（同记录 §2 B1/B2/C1-C3）。
+          #
+          # suffix 留空（不写该字段）：persona 段的模板渲染只注册 {{provider}} / {{model}}，
+          # **不注册 {{cwd}}**；模板里出现未注册变量时 DSH 会在任何模型请求之前抛
+          # `unknown prompt variable "{{cwd}}" in section "deployment:persona-suffix"`，
+          # 整个 prompt 组装失败、会话无法发消息（2026-10-18 实测踩坑）。
+          # 工作目录由运行时上下文（working-directory 服务）作为必需上下文注入，
+          # 不需要也不允许在 persona 模板里再写一遍。参见 DSH 自带 preset/persona 文档。
           - id: persona
             name: '@deepseek-ai/dsh-persona'
             config:
               prefix: !!js "process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:module').createRequire(new URL('noop.js', baseUrl)).resolve('dsh-task-planning-preset/PROMPT.md'), 'utf8')"
-              suffix: Your working directory is {{cwd}}.
 
           # ── 指令文件 ──────────────────────────────────────────────────────
           # 让模式能读到项目里的 AGENTS.md 类指引；maxBytes 与官方 standard 一致。
@@ -220,3 +226,8 @@
 #        + SKILL.md 骨架三铁律新增第 11 条、骨架二补发布类要求、落盘前核对 9 -> 10 条 + 哨兵 v7 -> v8
 # touch: 2026-10-16 删除「单任务 2 亿 token」限额标准（插件 TASK_LIMIT + PROMPT.md 硬约束③/§七/§八/§十五）
 #        + §八 删「>2 亿须告知确认」并重编号（落盘 §八.6 -> §八.5、拒绝立项 §八.7 -> §八.6）+ 哨兵 v8 -> v9
+# touch: 2026-10-27 取消「最多 6 轮」提问上限，改为「版本迭代询问法」（先给版本迭代规划表等确认 ->
+#        逐版本提问：每版本每轮 3–9 题、最多 9 轮 = 下限 3 题 / 上限 81 题；每版本各一份 9 项清单；
+#        版本确认书通过即自动进下一版；喊停整项目生效）+ 硬约束⑦ 增「并行须画版本依赖图 + 并行产物
+#        必须配「组装验收」任务」（§八.7 / §十一.3）+ §五.7 总览须含「版本迭代规划」小节
+#        + SKILL.md 骨架一新增必读小节 / 落盘核对 10 -> 11 条 + 哨兵 v9 -> v10
