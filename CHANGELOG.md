@@ -110,6 +110,21 @@
       内部产物目录（`_自测` / `_验收` / `notepad-app` / `.dsh-acl-report`）**0 个**；
       隐私门 `--worktree-only` → **block 命中 0**（warn 16 处均为既有机器布局路径）；
       远端最近 5 个提交的作者/提交者**全部是中性身份**。
+### 发布面隐私复核（2026-10-27）
+
+- **审计对象不是工作区，而是实际已公开的三处**：npm 包内容（解出 registry 上真实 tarball）、
+  npm registry 公开元数据、市场 PR #9840 的 diff。
+- **npm 包内容（6 个文件）逐字扫**：本机用户名 0 / 邮箱 0 / SID 0 / 凭据特征 0 / 家目录真实写法 0；
+  仓库门禁（通用 14 条 + 本机 13 条）**block 0**，warn 2 处为 `D:\.pnpm-store\v11`——
+  pnpm 在任意 Windows 机器上的默认 store 路径，不含身份信息，且在讲 `ERR_PNPM_UNEXPECTED_STORE` 的排错上下文里。
+- **市场 PR #9840 的 6 行 diff**：只有公开 URL、仓库名、分类 id 与两段描述，**0 处个人信息**；
+  提交身份为 `325988531+TBTNCT@users.noreply.github.com`（noreply）；本仓库提交为中性身份。
+- **npm registry 公开元数据**的 `maintainers` / `_npmUser` 会写入发布者**账号邮箱**（本文已占位化记录）。
+  该字段来自账号设置而非 `package.json`，**在仓库里做什么清洗都无法覆盖它**，且已发布版本不可回改。
+  **裁决：接受（不处理）**，理由与后续改法的说明见 `docs/实施记录/17-发布面隐私复核.md` §五之一。
+- **过程中一次自伤（如实记录）**：写审计文档时把该邮箱原样抄了进去，门禁当场拦下（block 3）。
+  已改为 `<EMAIL_REDACTED>` / `<npm_user>` 占位符并加注说明——与 v1.1.0 发布记录里踩过的同一个坑同源。
+
 - **过程中的一次网络自伤（如实记录）**：`git push` / `git clone` 有数次报
       `Failed to connect to github.com:443`，重试若干次后 `push` 成功（第 3 次尝试 + `http.version=HTTP/1.1`）；
       克隆始终连不上，改用 `api.github.com` 的 tarball 完成复验。**结论不变，但复验路径与任务书示例不同**。
