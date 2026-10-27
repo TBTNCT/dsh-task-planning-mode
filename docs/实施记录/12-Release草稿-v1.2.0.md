@@ -89,7 +89,7 @@
 | 静态核对脚本（哨兵 / 旧口径清零 / 新口径落地 / 12 条硬约束 / 15 章节 / 空话 / 体量 / skill / patch） | **55 PASS / 0 FAIL** |
 | 运行方口径脚本（复刻 `cordis.patch.yml` 两条 `!!js` 的真实求值路径） | **9 PASS / 0 FAIL** |
 | `node --check plugins/token-estimator/index.js` | 通过（插件未改动，回归确认） |
-| 隐私门 `node tools/privacy-scan.mjs` | **block 命中 0**，退出码 0；warn 759 处均为既有机器布局路径，本次未新增 |
+| 隐私门 `node tools/privacy-scan.mjs` | **block 命中 0**，退出码 0（工作区 + 全部提交历史）；warn 全部是既有机器布局路径（pnpm store / 探针临时目录等），**本次改动的文件 0 warn** |
 | 旧口径清零 | `PROMPT.md` / `README.zh.md` / `README.en.md` 里「最多 6 轮」「3–10 题」**各 0 命中** |
 | 新口径落地 | 「每轮 3–9 题」「最多 9 轮」「上限 81 题」「版本迭代询问法」「版本迭代规划表」「组装验收」均按预期出现 |
 | 体量 | 行数 **389 ≤ 400**；汉字 **9887** |
