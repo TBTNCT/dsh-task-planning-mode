@@ -89,6 +89,21 @@
 - [ ] **待人工**：重启桌面端 + 新开会话 → 问模式「当前哨兵值是多少」，答 `v10` 才算真生效
       （判据与步骤见 `docs/实施记录/11-版本迭代询问法.md` §6）。
 
+### 发布记录（2026-10-27）
+
+- [x] **推送**：`32100ab..41e773e` 推到 `main`（3 个提交）；`git ls-remote` 复核远端 `main` = `41e773e`。
+- [x] **tag 与 Release**：附注 tag `v1.2.0`（`f6de2d8`）已推送；
+      Release <https://github.com/TBTNCT/dsh-task-planning-mode/releases/tag/v1.2.0>（非草稿、非预发布）。
+- [x] **发布后复验（从远端取回快照再扫，2026-10-27）**：
+      拉取 `api.github.com` 上 `v1.2.0` 的 tarball（`github.com:443` 当时连接超时，故改走 API，结果等价）→
+      `PROMPT.md` 首行哨兵 **`v10`**、389 行 / 9887 汉字；关键文件 9/9 齐备；
+      内部产物目录（`_自测` / `_验收` / `notepad-app` / `.dsh-acl-report`）**0 个**；
+      隐私门 `--worktree-only` → **block 命中 0**（warn 16 处均为既有机器布局路径）；
+      远端最近 5 个提交的作者/提交者**全部是中性身份**。
+- **过程中的一次网络自伤（如实记录）**：`git push` / `git clone` 有数次报
+      `Failed to connect to github.com:443`，重试若干次后 `push` 成功（第 3 次尝试 + `http.version=HTTP/1.1`）；
+      克隆始终连不上，改用 `api.github.com` 的 tarball 完成复验。**结论不变，但复验路径与任务书示例不同**。
+
 ---
 
 ## [1.1.0] - 2026-10-16
