@@ -44,14 +44,32 @@
 - `README.zh.md` / `README.en.md`：使用流程按版本迭代重写（版本规划表 → 逐版本提问 → 每版确认书 →
   总确认书），补「可并行任务可同时开 2–3 个会话、但必须过组装验收」；产出表补版本迭代规划表一行。
 - `presets/task-planning-bundle/README.md`：文件清单标注哨兵 `v10`、小节数更正为 15。
-- `presets/task-planning-bundle/cordis.patch.yml`：新增 `touch` 记录（哨兵 `v9 -> v10`，用于触发 preset 重组）。
+- `presets/task-planning-bundle/cordis.patch.yml`：新增 `touch` 记录（哨兵 `v9 -> v10`，用于触发 preset 重组）；
+  persona 段补注释「**不要写 `suffix`（`{{cwd}}` 未注册）**」。
+- `docs/实施记录/12-Release草稿-v1.2.0.md`（新增）：本版 Release 正文成文，格式对齐 `07` / `10` 两份草稿。
+
+### 修复
+
+- **persona 模板不得写 `{{cwd}}`**（`2026-10-18` 实测踩坑，随本版一并发布）：
+  - 现象：preset 的 persona 段带 `suffix: Your working directory is {{cwd}}.` 时，**任何模型请求之前**就抛
+    `unknown prompt variable "{{cwd}}" in section "deployment:persona-suffix"`，整个 prompt 组装失败、会话不可用。
+  - 根因：persona 段的模板渲染只注册 `{{provider}}` / `{{model}}` 两个变量，`{{cwd}}` 从未注册；
+    工作目录由运行时上下文（working-directory 服务）作为必需上下文注入，不需要在 persona 模板里再写一遍。
+  - 处理：`presets/task-planning-bundle/cordis.patch.yml` 删掉该 `suffix` 行并补注释说明；
+    旧机制留档目录 `presets/task-planning/agent.cordis.yml` 同步删掉该行；
+    `docs/工作流程/01-仓库地基与预设骨架.md` / `04-模式系统提示词正文.md` 里**指导读者写这一行**的示例同步改正
+    （这两处的改动已在工作区里，属于本次源码更新的一部分，随本版一并提交）。
+  - 复核：改后 `{{cwd}}` 只出现在 `#` 注释里，求值的 YAML 值与 `PROMPT.md` 正文中**模板变量 0 处**；
+    两份 YAML 均可解析（`js-yaml` + 自定义 `!!js` tag）。
 
 ### 未改动（有意保留）
 
 - **硬约束 ① 原文一字未改**（「只规划不执行」）。本次改动本身属于「修改本模式自己的文件」，
   按使用者裁决走**会话内口头例外**，不写进提示词正文；因此 `PROMPT.md` 的自指边界保持原样。
-- 历史记录（`docs/实施记录/`、`docs/验收报告/`、`docs/经验/`、`docs/工作流程/` 任务书）
-  记录的是当时口径，**不作追改**；本次改动的证据另见 `docs/实施记录/11-版本迭代询问法.md`。
+- 历史记录（`docs/实施记录/`、`docs/验收报告/`、`docs/经验/`）记录的是当时口径，**不作追改**；
+  本次改动的证据另见 `docs/实施记录/11-版本迭代询问法.md`。
+  **唯一例外**：`docs/工作流程/01`、`04` 两份任务书里**教人写 `suffix: {{cwd}}`** 的那几行已改正——
+  它属于「照抄就会让模式不可用」的错误指令，留着等于继续挖坑（见上面「修复」一节）。
 
 ### 验证（机器侧，2026-10-27）
 
@@ -63,6 +81,11 @@
       首行哨兵 `v10`；`skills/` 可解析且 `SKILL.md`（12606 字符）含「版本迭代规划」「组装验收」；
       patch 用 `js-yaml` 解析通过，`preset id` / 16 行插件 / 未设 `complete` / persona 仍读 `PROMPT.md` 全部通过。
 - [x] `node --check plugins/token-estimator/index.js` 通过；`node tools/privacy-scan.mjs` → **block 命中 0**。
+- [x] **发布前二次复核（2026-10-27，只读独立复核）**：两份 YAML 解析通过（`cordis.patch.yml` 用 FAILSAFE +
+  自定义 `!!js` tag，`plugins` 16 行、4 行含 `!!js`；`agent.cordis.yml` DEFAULT_SCHEMA，顶层 5 行）；
+  `PROMPT.md` 389 行 / 9887 汉字 / 哨兵唯一；旧口径 10 条正则（含全半角与 en-dash 变体）三份面向使用者文档
+  **全 0 命中**；本次改动新增的 13 行 + 未跟踪新文件 121 行**本机信息 0 命中**；
+  `{{cwd}}` 只存在于注释、求值字符串里的模板变量 0 处。
 - [ ] **待人工**：重启桌面端 + 新开会话 → 问模式「当前哨兵值是多少」，答 `v10` 才算真生效
       （判据与步骤见 `docs/实施记录/11-版本迭代询问法.md` §6）。
 

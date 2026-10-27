@@ -12,8 +12,11 @@
 # ── identity ────────────────────────────────────────────────────────────────
 
 # 本模式自己的 persona：prefix 目前是占位文本，正式系统提示词在任务 04 写入。
-# {{model}} / {{cwd}} 由 agent 自己的路由与工作目录解析；不设 complete（要保持
-# DSH 的工具指引与运行上下文）。
+# persona 段只注册 {{provider}} / {{model}} 两个变量，**不注册 {{cwd}}**：模板里写
+# `{{cwd}}` 会让 prompt 组装在任何模型请求之前抛
+# `unknown prompt variable "cwd" in section "deployment:persona-suffix"`，会话直接不可用
+# （2026-10-18 实测）。工作目录由运行时上下文（working-directory）作为必需上下文提供，
+# 不要写进 persona 模板。不设 complete（要保持 DSH 的工具指引与运行上下文）。
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
@@ -21,7 +24,6 @@
       你是 DeepSeek Harness 的「任务规划」模式：把使用者的想法问清楚，拆成可执行的规划与提示词，
       自己不动手实现任何东西。
       （正式系统提示词见任务 04）
-    suffix: Your working directory is {{cwd}}.
 
 # ── tools ───────────────────────────────────────────────────────────────────
 
