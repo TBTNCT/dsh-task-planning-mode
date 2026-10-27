@@ -82,8 +82,10 @@ npm pack（真打）    → dsh-task-planning-preset-1.2.0.tgz
 
 ## 三、PowerShell 执行步骤（人工）
 
-> **关于 `<REPO>`**：它就是本仓库根目录的绝对路径。按本仓库开源前隐私规范，文档里一律写占位符
-> `<REPO>`，复制命令时换成你自己的实际路径即可。
+> ⚠️ **命令里凡是带尖括号的都是占位符**（`<REPO>`、`<当前6位码>` 等），复制时必须**整体替换**成真实值，
+> 连尖括号一起删掉。直接粘贴带 `<` `>` 的路径，PowerShell 会报「路径中具有非法字符」（已实测）。
+> 本文的 `Set-Location` 一律用**相对路径**：先在仓库根目录下（`cd` 到本仓库），再照抄即可，
+> 这样也不必在文档里写死本机绝对路径（开源前隐私规范）。
 >
 > 以下命令**只能由使用者本人执行**（`npm login` 要浏览器授权 / 输密码，按铁律 11 不能代做）。
 > 全部是 PowerShell 5.1 可直接粘贴的写法，**不要**存成 .ps1 再跑（除非存成带 BOM）。
@@ -145,7 +147,7 @@ npm profile get tfa          # 应变为 auth-and-writes 或 auth-only（不再�
 然后发布时**带上当前 6 位码**（30 秒一换，过期就等下一轮）：
 
 ```powershell
-Set-Location '<REPO>\presets\task-planning-bundle'   # <REPO> = 本仓库根目录
+Set-Location .\presets\task-planning-bundle   # 先 cd 到仓库根目录再执行
 npm publish --access public --otp=<你的6位码>
 ```
 
@@ -190,7 +192,7 @@ npm view dsh-task-planning-preset version
 ### 第 3 步：发布前最后一次本地复核（只读）
 
 ```powershell
-Set-Location '<REPO>\presets\task-planning-bundle'   # <REPO> = 本仓库根目录
+Set-Location .\presets\task-planning-bundle   # 先 cd 到仓库根目录再执行
 npm pack --dry-run
 ```
 
@@ -199,7 +201,7 @@ npm pack --dry-run
 ### 第 4 步：发布
 
 ```powershell
-Set-Location '<REPO>\presets\task-planning-bundle'   # <REPO> = 本仓库根目录
+Set-Location .\presets\task-planning-bundle   # 先 cd 到仓库根目录再执行
 npm publish --access public
 ```
 
