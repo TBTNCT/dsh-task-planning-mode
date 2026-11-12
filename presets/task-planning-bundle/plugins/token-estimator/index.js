@@ -38,12 +38,19 @@
  *   5) 迭代乘子：`iterations / 3`（默认 3 轮 = 1.0）。
  *   6) `raw = (baseTokens + readTokens + produceTokens) × 复杂度 × 迭代`
  *      `低 = raw × 0.8`，`高 = raw × 2.5`。
+ *   7) 校准 ×20：`raw` 之后统一乘 `CALIBRATION_FACTOR`（见常量区）。
+ *      **只乘这一处**；`LOW_FACTOR` / `HIGH_FACTOR` 仍是"区间下沿/上沿"，不含标定倍率。
  *
  * 标定：以本项目（8 个主任务的插件开发，约 40 文件 / 6 万字文档 / 5 千行既有代码）代入，
- * 得到约 4.6M – 14.5M，与 `docs/工作流程/00-总览与使用说明.md` 第八节的
- * 4.7M – 14.5M 同一量级（标定过程见实施记录）。
+ * **校准前**得到约 4.6M – 14.5M（与 `docs/工作流程/00-总览与使用说明.md` 第八节的 4.7M – 14.5M
+ * 同一量级，标定过程见实施记录）；**乘以 20 后**同一项目约 **92M – 290M**。
+ * 这个 ×20 来自使用者实测：真实消耗平均约为原公式输出的 20 倍（模型 deepseek-v4.1-flash，简称 ds4.1f）。
+ * `docs/实施记录/03` 里的 4.64M – 14.49M 是**校准前**的历史口径，按铁律只归档不追改，不代表现口径。
  *
- * ⚠️ 这是估算，不是承诺；数字来自上面的可解释公式，不来自任何被伪造的用量。
+ * ⚠️ 校准后更容易触发「单对话 6000 万」阈值——**这是正确行为**：阈值保持不变，触发就拆分，
+ *    不许为了不触发报警把 `CALIBRATION_FACTOR` 调小或把 `CONVERSATION_LIMIT` 抬高。
+ *
+ * ⚠️ 这是估算，不是承诺；数字来自上面的可解释公式，不来自任何被伪造的用量。本估算基于 ds4.1f 消耗计算。
  */
 
 import process from "node:process";
@@ -77,6 +84,21 @@ const HIGH_FACTOR = 2.5;
 const RETRY_FACTOR = 1.5;
 /** 默认迭代轮数（一次对话内平均改稿/返工轮数）。 */
 const DEFAULT_ITERATIONS = 3;
+
+/**
+ * 静态估算的标定系数。三件事必须一起记住：
+ *   ① 依据：使用者实测 ds4.1f（deepseek-v4.1-flash）的实际消耗约为原公式输出的 20 倍；
+ *   ② **这是标定系数，改它等于改估算口径**（不是"区间偏保守就调一下"的旋钮）；
+ *   ③ 作用点：**只乘在 `raw` 之后那一条语句**，`LOW_FACTOR` / `HIGH_FACTOR` 的语义不变。
+ * 阈值 `CONVERSATION_LIMIT` 不随它变化，仍是 6000 万。
+ */
+const CALIBRATION_FACTOR = 20;
+
+/** 校准口径标注文案：返回值、渲染文本、报告共用这一份，避免四处写死字符串导致不一致。 */
+const CALIBRATION_NOTICE = "本估算基于 ds4.1f 消耗计算（已按 ×20 校准）。";
+
+/** 渲染文本里的校准行（数值取自 `CALIBRATION_FACTOR`，措辞与验收判据逐字一致）。 */
+const CALIBRATION_RENDER_LINE = `校准：×${CALIBRATION_FACTOR}（本估算基于 ds4.1f 消耗计算）`;
 
 /** 规模参数的默认值：调用方不传 scale 时用它，保证工具永远有输出。 */
 const DEFAULT_SCALE = {
@@ -163,7 +185,8 @@ function estimate(stage, scaleRaw) {
   const iterationFactor = scale.iterations / DEFAULT_ITERATIONS;
   const multiplier = complexity * iterationFactor;
 
-  const raw = (baseTokens + readTokens + produceTokens) * multiplier;
+  // 校准只乘在这一处：×CALIBRATION_FACTOR（详见常量区注释 ②③）。
+  const raw = (baseTokens + readTokens + produceTokens) * multiplier * CALIBRATION_FACTOR;
   const low = Math.round(raw * LOW_FACTOR);
   const high = Math.round(raw * HIGH_FACTOR);
   const total = Math.round(((low + high) / 2) * RETRY_FACTOR);
@@ -185,6 +208,8 @@ function estimate(stage, scaleRaw) {
     `产出侧：${scale.docChars} 字 × ${PRODUCE_TOKENS_PER_DOC_CHAR} + ${scale.files} 文件 × ${PRODUCE_TOKENS_PER_FILE} = ${produceTokens} token`,
     `乘子：复杂度 ×${complexity.toFixed(3)}${complexityParts.length ? `（${complexityParts.join("，")}）` : ""} × 迭代 ${scale.iterations}/${DEFAULT_ITERATIONS} = ×${multiplier.toFixed(3)}`,
     `区间系数：低 ×${LOW_FACTOR} / 高 ×${HIGH_FACTOR}；合计 = (低+高)/2 × 重试系数 ${RETRY_FACTOR}`,
+    `校准 ×${CALIBRATION_FACTOR}：使用者实测 ds4.1f 的实际消耗约为原公式输出的 ${CALIBRATION_FACTOR} 倍，` +
+      `故静态估算统一乘标定系数（只乘在 raw 之后，不改动区间系数与重试系数）。${CALIBRATION_NOTICE}`,
   ];
 
   return {
@@ -198,13 +223,18 @@ function estimate(stage, scaleRaw) {
       produceTokens,
       multiplier: Number(multiplier.toFixed(3)),
       retryFactor: RETRY_FACTOR,
+      calibrationFactor: CALIBRATION_FACTOR,
     },
     triggers: {
       conversationLimit,
     },
     verdicts,
     basis,
-    disclaimer: "这是估算，不是承诺：数字来自可解释的静态公式，实际用量随对话轮次与返工次数变化。",
+    calibrationNotice: CALIBRATION_NOTICE,
+    disclaimer:
+      "这是估算，不是承诺：数字来自可解释的静态公式，实际用量随对话轮次与返工次数变化。" +
+      CALIBRATION_NOTICE +
+      "「单对话 6000 万」阈值不随校准改变，触发就必须拆分。",
   };
 }
 
@@ -344,12 +374,14 @@ const ESTIMATE_TOKENS_TOOL = {
         produceTokens: { type: "integer" },
         multiplier: { type: "number" },
         retryFactor: { type: "number" },
+        calibrationFactor: { type: "integer" },
       }),
       triggers: obj({
         conversationLimit: { type: "boolean" },
       }),
       verdicts: { type: "array", items: { type: "string" } },
       basis: { type: "array", items: { type: "string" } },
+      calibrationNotice: { type: "string" },
       disclaimer: { type: "string" },
     }),
     render: (_args, value) => {
@@ -357,6 +389,7 @@ const ESTIMATE_TOKENS_TOOL = {
         `【token 估算 · ${value.stage}】`,
         `低估算：${fmt(value.low)}（${value.low}） ｜ 高估算：${fmt(value.high)}（${value.high}）`,
         `保守合计：${fmt(value.total)}（${value.total}，= (低+高)/2 × ${value.breakdown.retryFactor}）`,
+        CALIBRATION_RENDER_LINE,
         "",
         "阈值判断：",
         ...value.verdicts.map((v) => `  - ${v}`),
@@ -364,6 +397,7 @@ const ESTIMATE_TOKENS_TOOL = {
         "估算依据：",
         ...value.basis.map((b) => `  - ${b}`),
         "",
+        value.calibrationNotice,
         value.disclaimer,
       ];
       return [{ type: "text", text: lines.join("\n") }];
@@ -421,6 +455,7 @@ function createUsageReportTool(ctx) {
       comparison: { type: "string" },
       advice: { type: "string" },
       notes: { type: "array", items: { type: "string" } },
+      disclaimer: { type: "string" },
     }),
     render: (_args, value) => {
       const lines = [`【token 用量报告 · ${value.scope}】`];
@@ -438,6 +473,8 @@ function createUsageReportTool(ctx) {
         lines.push("备注：");
         for (const n of value.notes) lines.push(`  - ${n}`);
       }
+      lines.push("");
+      lines.push(value.disclaimer);
       return [{ type: "text", text: lines.join("\n") }];
     },
   },
@@ -457,6 +494,10 @@ function createUsageReportTool(ctx) {
 
     // 静态对照：用调用方给的规模（或默认值）算一份区间。
     const staticResult = estimate(taskId ? `任务 ${taskId}` : "当前会话", args.scale);
+    notes.push(
+      `静态对照已按 ×${CALIBRATION_FACTOR} 校准（本估算基于 ds4.1f 消耗计算）；` +
+        "「已用」是运行时实测的本会话累计，两者口径不同，不能相减。",
+    );
 
     // 运行时计量（可被环境变量强制关闭，用于验证降级路径）。
     let runtime;
@@ -496,6 +537,11 @@ function createUsageReportTool(ctx) {
 
     notes.push("本报告不伪造任何用量：数字要么来自运行时计量（附来源），要么来自上面可解释的静态公式。");
 
+    const disclaimer =
+      "这是估算，不是承诺：「已用」来自运行时计量（附来源），静态对照来自可解释的静态公式。" +
+      CALIBRATION_NOTICE +
+      "两个口径不同，不能相减；「单对话 6000 万」阈值不随校准改变。";
+
     return Promise.resolve({
       scope,
       available: runtime.available,
@@ -507,6 +553,7 @@ function createUsageReportTool(ctx) {
       comparison,
       advice,
       notes,
+      disclaimer,
     });
   },
   };
