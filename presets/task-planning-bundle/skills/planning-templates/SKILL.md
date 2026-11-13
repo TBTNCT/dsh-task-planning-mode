@@ -528,7 +528,7 @@ v0.1 → v0.2 ─┬─→ 任务 02 ─┐
 | 图例条（五态颜色 + 审核门 + 组装验收 + 绿色连线） | 【必须】 | 颜色与徽标不用猜 |
 | 按 `deps` 拓扑分层、同一 `parallelGroup` 强制同层并排（虚线框 + 批次标签） | 【必须】 | 画出并行分支与汇合 |
 | 节点卡：编号 / 名称 / 版本 / 状态徽标 / 预计耗时 / 前置简写 / 一句话备注 | 【必须】 | 每个节点自带可执行信息 |
-| 审核门（`gate: true`）琥珀外圈 + 门徽标；名字含「组装验收」紫色外圈 + 组装验收徽标 | 【必须】 | 汇合点不淹没在普通节点里 |
+| 审核门 / 组装验收特殊样式：`kind` 优先（`gate` / `final`），缺失时回退 `gate: true` 与名字含「组装验收」 | 【必须】 | 汇合点不淹没在普通节点里，且节点改名不退化 |
 | 折线依赖边；**前置已完成的连线变绿** | 【必须】 | 一眼看出哪条线已经打通 |
 | 点节点循环切五态、进度条与「下一个任务」**立刻**刷新、状态存本机浏览器 | 【必须】 | 是能用的进度视图，不是静态图片 |
 | 导出状态 JSON / 从 JSON 导入 / 重置为文件状态 / 打印（打印隐藏按钮、仍按状态着色） | 【必须】 | 状态可带走、可恢复、可归档 |
@@ -543,8 +543,11 @@ window.TASK_FLOW_DATA = { ... };
 
 字段固定为：
 
-`{ project, updatedAt, threshold, groups:[{id,label,parallel}], nodes:[{ id, no, name, phase, version, status, parallelGroup, gate, estimate, note, deps:[], files:[] }] }`
+`{ project, updatedAt, threshold, groups:[{id,label,parallel}], nodes:[{ id, no, name, phase, version, status, parallelGroup, gate, kind, estimate, note, deps:[], files:[] }] }`
 
+- `kind` 是**可选**的显式样式标记：`"gate"` = 琥珀外圈 + 门徽标，
+  `"final"`（或中文别名 `"组装验收"`）= 紫色外圈 + 组装验收徽标；
+  **不写 `kind` 时回退**到 `gate: true` 与「名字里含组装验收」两条旧规则，老数据零改动、改名也不退化。
 - `deps` 里写节点的 **`id`，不是 `no` 编号**（写编号会断线；落盘前必须断言悬空依赖数为 **0**）。
 - `status` 只允许 `未开始 | 进行中 | 完成 | 阻塞 | 返工` 五者之一（写错会退化成「未开始」）。
 - `threshold` 是进度条上里程碑阈值线的百分比；`estimate` 写带数字的区间（如「1–2 小时」），

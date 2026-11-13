@@ -13,7 +13,11 @@
   【使用约定】
   1. deps 里写节点的 id，不是 no 编号；写编号会断线。
   2. status 只取五态之一：未开始 / 进行中 / 完成 / 阻塞 / 返工；写错会退化成「未开始」。
-  3. 页面里点节点改的状态只存在本机浏览器；跨会话的真相以
+  3. 特殊样式判定：kind 优先、缺失时回退到旧规则。
+     kind = "final" 或 "组装验收" → 紫色外圈 + 组装验收徽标；
+     kind = "gate" → 琥珀外圈 + 审核门徽标；
+     不写 kind 时，仍按 gate:true 与「名字里含组装验收」判定（老数据零改动）。
+  4. 页面里点节点改的状态只存在本机浏览器；跨会话的真相以
      docs/优化提示词/执行进度.md 为准，每个任务收尾时两处一起改。
 
   【本文件的性质】
@@ -466,6 +470,9 @@ window.TASK_FLOW_DATA = {
       if (!n || !n.id) { throw new Error('第 ' + (i + 1) + ' 个节点缺 id'); }
       if (seen[n.id]) { throw new Error('节点 id 重复：' + n.id); }
       seen[n.id] = true;
+      // kind 是显式样式标记；「组装验收」是 final 的中文别名。空字符串 = 未填，走回退规则。
+      var kind = String(n.kind == null ? '' : n.kind);
+      if (kind === '组装验收') { kind = 'final'; }
       out.nodes.push({
         id: String(n.id),
         no: String(n.no == null ? String(i + 1) : n.no),
@@ -475,6 +482,7 @@ window.TASK_FLOW_DATA = {
         status: validStatus(n.status),
         parallelGroup: String(n.parallelGroup == null ? '' : n.parallelGroup),
         gate: !!n.gate,
+        kind: kind,
         estimate: String(n.estimate == null ? '' : n.estimate),
         note: String(n.note == null ? '' : n.note),
         deps: Array.isArray(n.deps) ? n.deps.map(String) : [],
@@ -590,7 +598,15 @@ window.TASK_FLOW_DATA = {
     if (!n.deps.length) { return '无'; }
     return n.deps.map(function (d) { return m[d] ? m[d].no : d; }).join(' · ');
   }
-  function isFinalNode(n) { return n.name.indexOf('组装验收') >= 0; }
+  // kind 优先；不填 kind 时回退到旧的 gate:true 与「名字里含组装验收」两条规则。
+  function nodeKind(n) {
+    if (n.kind) { return n.kind; }
+    if (n.name.indexOf('组装验收') >= 0) { return 'final'; }
+    if (n.gate) { return 'gate'; }
+    return '';
+  }
+  function isGate(n) { return nodeKind(n) === 'gate'; }
+  function isFinalNode(n) { return nodeKind(n) === 'final'; }
 
   function buildFlow() {
     var layersBox = $('layers');
@@ -620,7 +636,7 @@ window.TASK_FLOW_DATA = {
       html += '</div><div class="layer-nodes' + (members.length === 1 ? ' single' : '') + '">';
 
       members.forEach(function (n) {
-        var gate = !!n.gate;
+        var gate = isGate(n);
         var fin = isFinalNode(n);
         var cls = 'node' + (gate ? ' is-gate' : '') + (fin ? ' is-final' : '');
         html += '<article class="' + cls + '" data-id="' + esc(n.id) + '" data-status="未开始" tabindex="0" role="button"'
@@ -746,7 +762,7 @@ window.TASK_FLOW_DATA = {
     var meta = '编号 ' + n.no + ' · ' + STATUS_EMOJI[states[n.id]] + ' ' + states[n.id]
              + ' · 预计 ' + (n.estimate || '未填')
              + ' · 前置 ' + depLabel(n)
-             + (n.gate ? ' · 🚪 审核门' : '')
+             + (isGate(n) ? ' · 🚪 审核门' : '')
              + (isFinalNode(n) ? ' · 🧩 组装验收' : '');
     return { done: false, name: n.name, meta: meta, reason: best.reason };
   }
