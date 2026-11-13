@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<!--
+  ============================================================================
+  任务执行流程图 · 单文件模板
+  ----------------------------------------------------------------------------
+  【换新项目时只替换 TASK_FLOW_DATA】
+  本文件底部有一个 JSON 数据块（type 为 application/json、id 为 flow-data），
+  里面唯一的内容就是 window.TASK_FLOW_DATA = { ... };
+  换项目时只改这一段的 project / updatedAt / threshold / groups / nodes，
+  上面的样式、结构与下面的渲染脚本都不用动。
+  改完把本文件另存为 docs/工作流程/00-任务执行流程图.html 即可双击打开。
+
+  【使用约定】
+  1. deps 里写节点的 id，不是 no 编号；写编号会断线。
+  2. status 只取五态之一：未开始 / 进行中 / 完成 / 阻塞 / 返工；写错会退化成「未开始」。
+  3. 页面里点节点改的状态只存在本机浏览器；跨会话的真相以
+     docs/优化提示词/执行进度.md 为准，每个任务收尾时两处一起改。
+
+  【本文件的性质】
+  单文件、零外链、零第三方库、UTF-8 无 BOM；双击（file://）即可使用。
+  全部图标用 emoji 或 CSS 画，不引图标库、字体、图片与 CDN。
+  ============================================================================
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>任务执行流程图</title>
+<style>
+/* ==========================================================================
+   一、配色与基础样式（浅色主题；状态色集中在这里，改主题只改这一段）
+   ========================================================================== */
+:root {
+  --bg: #f4f7fc;
+  --panel: #ffffff;
+  --line: #dbe3ef;
+  --text: #1b2637;
+  --muted: #67758c;
+  --shadow: 0 2px 10px rgba(30, 55, 95, .07);
+  --st-0: #94a3b8;   /* 未开始 */
+  --st-1: #3b82f6;   /* 进行中 */
+  --st-2: #16a34a;   /* 完成   */
+  --st-3: #dc2626;   /* 阻塞   */
+  --st-4: #ea580c;   /* 返工   */
+  --gate: #f59e0b;   /* 审核门 */
+  --final: #8b5cf6;  /* 组装验收 */
+  --wire: #c3cfe1;
+  --wire-done: #16a34a;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.wrap { max-width: 1320px; margin: 0 auto; padding: 22px 20px 48px; }
+
+/* --------------------------------------------------------------------------
+   二、顶部：标题 + 项目名 + 更新时间 + 本地保存状态 + 工具条
+   -------------------------------------------------------------------------- */
+.topbar {
+  display: flex; flex-wrap: wrap; gap: 14px;
+  align-items: flex-start; justify-content: space-between;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 14px; padding: 16px 20px; box-shadow: var(--shadow);
+}
+.topbar h1 { margin: 0; font-size: 22px; letter-spacing: .5px; }
+.sub { margin-top: 4px; color: var(--muted); font-size: 13px; }
+.sub b { color: var(--text); font-weight: 600; }
+.sub .dot { margin: 0 7px; color: #b6c2d4; }
+#save-state { color: #0f766e; }
+#save-state.warn { color: #b45309; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.toolbar button, .btn-file {
+  appearance: none; border: 1px solid #c7d6ea; background: #f8fbff;
+  color: #1e3a5f; border-radius: 8px; padding: 7px 12px;
+  font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap;
+  transition: background .15s, border-color .15s;
+}
+.toolbar button:hover, .btn-file:hover { background: #e8f1ff; border-color: #8db4e8; }
+.toolbar button:active, .btn-file:active { background: #d9e9ff; }
+.btn-file { display: inline-flex; align-items: center; position: relative; overflow: hidden; }
+.btn-file input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+
+/* --------------------------------------------------------------------------
+   三、三张信息卡：进度 / 下一个任务 / 总预计耗时
+   -------------------------------------------------------------------------- */
+.cards { display: grid; grid-template-columns: 1.05fr 1.3fr .8fr; gap: 14px; margin-top: 14px; }
+@media (max-width: 980px) { .cards { grid-template-columns: 1fr; } }
+.card {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 14px; padding: 15px 18px; box-shadow: var(--shadow);
+  min-height: 132px;
+}
+.card-title { font-size: 12px; color: var(--muted); letter-spacing: 1px; font-weight: 600; }
+.big { font-size: 27px; font-weight: 700; line-height: 1.25; margin-top: 4px; }
+.big small { font-size: 14px; font-weight: 500; color: var(--muted); }
+.bar-box { position: relative; margin: 12px 0 6px; height: 12px; background: #e8eef7; border-radius: 8px; }
+.bar-fill { height: 100%; width: 0; border-radius: 8px; background: linear-gradient(90deg, #22c55e, #16a34a); transition: width .25s ease; }
+.bar-mark { position: absolute; top: -5px; width: 2px; height: 22px; background: #f59e0b; }
+.bar-mark::after {
+  content: attr(data-label); position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
+  font-size: 10px; color: #b45309; white-space: nowrap;
+}
+.bar-foot { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+.next-card { border-left: 5px solid #3b82f6; }
+.next-name { font-size: 18px; font-weight: 700; margin-top: 4px; }
+.next-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.next-reason {
+  margin-top: 8px; background: #eff6ff; border: 1px dashed #b6d4ff;
+  border-radius: 8px; padding: 6px 10px; font-size: 12.5px; color: #1e40af;
+}
+.time-row { display: flex; gap: 18px; margin-top: 8px; }
+.time-cell { flex: 1; background: #f8fafc; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.time-cell span { display: block; font-size: 11px; color: var(--muted); }
+.time-cell b { font-size: 19px; }
+.time-warn { margin-top: 8px; font-size: 11.5px; color: #b45309; }
+
+/* --------------------------------------------------------------------------
+   四、图例条
+   -------------------------------------------------------------------------- */
+.legend {
+  display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  padding: 10px 16px; margin-top: 14px; box-shadow: var(--shadow); font-size: 12.5px;
+}
+.legend > b { color: var(--muted); font-size: 12px; letter-spacing: 1px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.chip i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; border: 1px solid rgba(0,0,0,.08); }
+.chip.ring i { background: #fff; border: 3px solid var(--gate); border-radius: 50%; }
+.chip.ring-final i { background: #fff; border: 3px solid var(--final); border-radius: 50%; }
+.chip.wire i { width: 20px; height: 3px; border: 0; border-radius: 2px; background: var(--wire-done); }
+.legend .count { color: var(--muted); }
+
+/* --------------------------------------------------------------------------
+   五、流程图主体：分层 + 节点卡 + 折线连线
+   -------------------------------------------------------------------------- */
+.flow-wrap {
+  margin-top: 14px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 14px; box-shadow: var(--shadow); padding: 8px 12px 20px; overflow-x: auto;
+}
+.flow { position: relative; min-width: 900px; padding: 8px 6px 6px; }
+.wires { position: absolute; inset: 0; pointer-events: none; z-index: 1; overflow: visible; }
+.wire { position: absolute; background: var(--wire); border-radius: 2px; }
+.wire.done { background: var(--wire-done); }
+.wire-arrow {
+  position: absolute; width: 0; height: 0; margin-left: -5px;
+  border-left: 5px solid transparent; border-right: 5px solid transparent;
+  border-top: 7px solid var(--wire);
+}
+.wire-arrow.done { border-top-color: var(--wire-done); }
+.layers { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 36px; }
+.layer { position: relative; border: 2px dashed transparent; border-radius: 16px; padding: 8px 12px 12px; }
+.layer.parallel { border-color: #b9c8e8; background: rgba(237, 244, 255, .62); }
+.layer-head {
+  display: flex; align-items: center; gap: 10px; min-height: 22px;
+  font-size: 12px; color: var(--muted); margin-bottom: 8px;
+}
+.layer-head .layer-badge {
+  background: #e8eef7; color: #43567a; border-radius: 20px; padding: 1px 10px; font-weight: 600;
+}
+.layer.parallel .layer-badge { background: #dbe7ff; color: #1e40af; }
+.layer-head .batch-label { font-weight: 700; color: #1e40af; }
+.layer-nodes { display: flex; flex-wrap: nowrap; gap: 16px; justify-content: center; }
+.node {
+  --sc: var(--st-0);
+  flex: 1 1 0; min-width: 176px; max-width: 300px;
+  position: relative; text-align: left; cursor: pointer; user-select: none;
+  background: #f8fafc; border: 2px solid var(--line); border-left: 6px solid var(--sc);
+  border-radius: 12px; padding: 10px 12px 9px; box-shadow: var(--shadow);
+  transition: transform .12s ease, box-shadow .15s ease, background .15s ease;
+}
+.node:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(30, 55, 95, .14); }
+.node:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+.node[data-status="未开始"] { --sc: var(--st-0); background: #f8fafc; }
+.node[data-status="进行中"] { --sc: var(--st-1); background: #eff6ff; }
+.node[data-status="完成"]   { --sc: var(--st-2); background: #f0fdf4; }
+.node[data-status="阻塞"]   { --sc: var(--st-3); background: #fef2f2; }
+.node[data-status="返工"]   { --sc: var(--st-4); background: #fff7ed; }
+.node.is-gate  { box-shadow: 0 0 0 3px rgba(245, 158, 11, .55); }
+.node.is-final { box-shadow: 0 0 0 3px rgba(139, 92, 246, .55); }
+.node-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.node-no {
+  font-size: 11px; font-weight: 700; color: #43567a; background: #e8eef7;
+  border-radius: 6px; padding: 1px 7px; letter-spacing: .5px;
+}
+.badge { font-size: 11.5px; font-weight: 700; color: var(--sc); white-space: nowrap; }
+.node-name { margin: 6px 0 4px; font-size: 14.5px; line-height: 1.35; }
+.node-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 5px; }
+.tag { font-size: 10.5px; color: #52627d; background: #eef2f9; border-radius: 5px; padding: 0 6px; }
+.tag.ver { color: #0f766e; background: #e6f6f3; }
+.node-flags { display: flex; flex-wrap: wrap; gap: 5px; }
+.flag { font-size: 10.5px; font-weight: 700; border-radius: 5px; padding: 0 6px; }
+.flag.gate { color: #92400e; background: #fef3c7; border: 1px solid #fcd34d; }
+.flag.final { color: #5b21b6; background: #ede9fe; border: 1px solid #c4b5fd; }
+.node-meta { margin-top: 7px; border-top: 1px dashed var(--line); padding-top: 6px; display: grid; gap: 1px; }
+.node-meta div { display: flex; justify-content: space-between; gap: 8px; font-size: 11.5px; }
+.node-meta span { color: var(--muted); }
+.node-meta b { font-weight: 600; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.node-note { margin: 6px 0 0; font-size: 11.5px; color: #52627d; }
+.node-hint { margin-top: 6px; font-size: 10.5px; color: #9aa8bc; text-align: right; }
+
+/* --------------------------------------------------------------------------
+   六、可复制 JSON 面板 + 页脚
+   -------------------------------------------------------------------------- */
+.json-panel {
+  margin-top: 14px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 14px; box-shadow: var(--shadow); padding: 12px 16px 14px;
+}
+.json-head { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: baseline; }
+.json-head span { font-size: 12px; color: var(--muted); }
+.json-panel pre {
+  margin: 8px 0 0; max-height: 230px; overflow: auto;
+  background: #f7f9fd; border: 1px solid #e3eaf5; border-radius: 9px;
+  padding: 10px 12px; font-size: 11.5px; line-height: 1.5;
+  font-family: Consolas, "Courier New", monospace; white-space: pre-wrap; word-break: break-all;
+}
+.footer { margin-top: 16px; color: var(--muted); font-size: 12px; text-align: center; line-height: 1.9; }
+
+/* --------------------------------------------------------------------------
+   七、打印：隐藏按钮，节点仍按状态着色
+   -------------------------------------------------------------------------- */
+@media print {
+  @page { size: A3 landscape; margin: 10mm; }
+  body { background: #fff; }
+  .wrap { max-width: none; padding: 0; }
+  .toolbar, .json-panel, .node-hint, .footer { display: none !important; }
+  .topbar, .card, .legend, .flow-wrap { box-shadow: none; }
+  .card, .layer, .node { page-break-inside: avoid; break-inside: avoid; }
+  .flow-wrap { overflow: visible; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 顶部 -->
+  <header class="topbar">
+    <div>
+      <h1>任务执行流程图</h1>
+      <div class="sub">
+        <b id="project-name">—</b>
+        <span class="dot">·</span>更新时间 <b id="updated-at">—</b>
+        <span class="dot">·</span><span id="save-state">正在读取本机状态…</span>
+      </div>
+    </div>
+    <div class="toolbar" id="toolbar">
+      <button type="button" id="btn-export">导出状态 JSON</button>
+      <label class="btn-file">从 JSON 导入<input type="file" id="file-import" accept=".json,application/json"></label>
+      <button type="button" id="btn-reset">重置为文件里的状态</button>
+      <button type="button" id="btn-print">打印 / 存 PDF</button>
+    </div>
+  </header>
+
+  <!-- 三张信息卡 -->
+  <section class="cards">
+    <div class="card">
+      <div class="card-title">整体进度</div>
+      <div class="big" id="progress-text">— <small>/ —</small></div>
+      <div class="bar-box">
+        <div class="bar-fill" id="bar-fill"></div>
+        <div class="bar-mark" id="bar-mark" data-label="里程碑 70%"></div>
+      </div>
+      <div class="bar-foot"><span id="progress-pct">0%</span><span id="progress-note">—</span></div>
+    </div>
+    <div class="card next-card">
+      <div class="card-title">下一个该做的任务</div>
+      <div class="next-name" id="next-name">—</div>
+      <div class="next-meta" id="next-meta">—</div>
+      <div class="next-reason" id="next-reason">—</div>
+    </div>
+    <div class="card">
+      <div class="card-title">总预计耗时</div>
+      <div class="time-row">
+        <div class="time-cell"><span>全部</span><b id="time-all">—</b></div>
+        <div class="time-cell"><span>剩余（未完成）</span><b id="time-left">—</b></div>
+      </div>
+      <div class="time-warn" id="time-warn"></div>
+    </div>
+  </section>
+
+  <!-- 图例 -->
+  <section class="legend" id="legend">
+    <b>图例</b>
+    <span class="chip"><i style="background:var(--st-0)"></i>⬜ 未开始</span>
+    <span class="chip"><i style="background:var(--st-1)"></i>🔄 进行中</span>
+    <span class="chip"><i style="background:var(--st-2)"></i>✅ 完成</span>
+    <span class="chip"><i style="background:var(--st-3)"></i>⏸️ 阻塞</span>
+    <span class="chip"><i style="background:var(--st-4)"></i>↩️ 返工</span>
+    <span class="chip ring"><i></i>🚪 审核门（琥珀外圈）</span>
+    <span class="chip ring-final"><i></i>🧩 组装验收（紫色外圈）</span>
+    <span class="chip wire"><i></i>绿色连线 = 前置已完成</span>
+    <span class="chip count" id="legend-count"></span>
+  </section>
+
+  <!-- 流程图主体 -->
+  <section class="flow-wrap">
+    <div class="flow" id="flow">
+      <div class="wires" id="wires"></div>
+      <div class="layers" id="layers"></div>
+    </div>
+  </section>
+
+  <!-- 可复制 JSON -->
+  <section class="json-panel" id="json-panel">
+    <div class="json-head">
+      <b>当前状态 JSON（可直接全选复制）</b>
+      <span id="json-tip">点「导出状态 JSON」会同时下载 task-flow-state.json；「从 JSON 导入」支持完整数据与只有状态映射两种格式。</span>
+    </div>
+    <pre id="json-out">—</pre>
+  </section>
+
+  <div class="footer">
+    用法：复制模板 → 只改底部的 <code>window.TASK_FLOW_DATA</code> → 双击打开（file://）→ 每个任务收尾改一次 status 并把 updatedAt 改成当天。<br>
+    点节点卡片循环切换五态；状态只存本机浏览器，跨会话以 <code>docs/优化提示词/执行进度.md</code> 为准。
+  </div>
+</div>
+
+<!--
+  ==========================================================================
+  数据接口：全文件只有这一处。换新项目只替换下面这个对象。
+  注意：这里是严格的 JSON（键名带引号、字符串用双引号、不许尾随逗号、不许注释）。
+  ========================================================================== -->
+<script type="application/json" id="flow-data">
+window.TASK_FLOW_DATA = {
+  "project": "示例项目 · 双批次并行交付",
+  "updatedAt": "2026-11-13",
+  "threshold": 70,
+  "groups": [
+    { "id": "batch-1", "label": "并行批次 ① · 三个核心模块", "parallel": true },
+    { "id": "batch-2", "label": "并行批次 ② · 三项集成改造", "parallel": true }
+  ],
+  "nodes": [
+    {
+      "id": "task-01", "no": "01", "name": "任务 1 · 需求澄清", "phase": "v0.1 骨架",
+      "version": "v1.3.0", "status": "完成", "parallelGroup": "", "gate": false,
+      "estimate": "1–2 小时", "note": "把验收标准问清楚，先定边界再动手。",
+      "deps": [], "files": ["docs/需求说明.md"]
+    },
+    {
+      "id": "task-02", "no": "02", "name": "任务 2 · 方案设计", "phase": "v0.1 骨架",
+      "version": "v1.3.0", "status": "完成", "parallelGroup": "", "gate": false,
+      "estimate": "2–3 小时", "note": "定接口、定写入范围，后面才能并行。",
+      "deps": ["task-01"], "files": ["docs/设计说明.md"]
+    },
+    {
+      "id": "task-03", "no": "03", "name": "任务 3 · 核心模块 A", "phase": "v0.2 核心能力",
+      "version": "v1.3.0", "status": "进行中", "parallelGroup": "batch-1", "gate": false,
+      "estimate": "3–5 小时", "note": "只写 src/a/，不碰别人的目录。",
+      "deps": ["task-02"], "files": ["src/a/index.mjs", "src/a/util.mjs"]
+    },
+    {
+      "id": "task-04", "no": "04", "name": "任务 4 · 核心模块 B", "phase": "v0.2 核心能力",
+      "version": "v1.3.0", "status": "未开始", "parallelGroup": "batch-1", "gate": false,
+      "estimate": "3–5 小时", "note": "与 A 写入范围互不重叠，可同时开会话。",
+      "deps": ["task-02"], "files": ["src/b/index.mjs"]
+    },
+    {
+      "id": "task-05", "no": "05", "name": "任务 5 · 核心模块 C", "phase": "v0.2 核心能力",
+      "version": "v1.3.0", "status": "返工", "parallelGroup": "batch-1", "gate": false,
+      "estimate": "2–4 小时", "note": "上轮接口没对齐，退回补测试用例。",
+      "deps": ["task-02"], "files": ["src/c/index.mjs"]
+    },
+    {
+      "id": "gate-06", "no": "06", "name": "并行代码审核 ①", "phase": "v0.2 核心能力",
+      "version": "v1.3.0", "status": "未开始", "parallelGroup": "", "gate": true,
+      "estimate": "1–2 小时", "note": "三条并行线的汇合点：合并冲突、接口对齐、重复实现。",
+      "deps": ["task-03", "task-04", "task-05"], "files": ["docs/审核记录.md"]
+    },
+    {
+      "id": "task-07", "no": "07", "name": "任务 7 · 集成改造 A", "phase": "v0.3 收尾",
+      "version": "v1.3.0", "status": "未开始", "parallelGroup": "batch-2", "gate": false,
+      "estimate": "2–3 小时", "note": "按审核结论改 A 侧接线。",
+      "deps": ["gate-06"], "files": ["src/a/adapter.mjs"]
+    },
+    {
+      "id": "task-08", "no": "08", "name": "任务 8 · 集成改造 B", "phase": "v0.3 收尾",
+      "version": "v1.3.0", "status": "未开始", "parallelGroup": "batch-2", "gate": false,
+      "estimate": "2–3 小时", "note": "按审核结论改 B 侧接线。",
+      "deps": ["gate-06"], "files": ["src/b/adapter.mjs"]
+    },
+    {
+      "id": "task-09", "no": "09", "name": "任务 9 · 集成改造 C", "phase": "v0.3 收尾",
+      "version": "v1.3.0", "status": "阻塞", "parallelGroup": "batch-2", "gate": false,
+      "estimate": "1–2 小时", "note": "等人工确认第三方字段口径后再动。",
+      "deps": ["gate-06"], "files": ["src/c/adapter.mjs"]
+    },
+    {
+      "id": "gate-10", "no": "10", "name": "并行代码审核 ②", "phase": "v0.3 收尾",
+      "version": "v1.3.0", "status": "未开始", "parallelGroup": "", "gate": true,
+      "estimate": "1–2 小时", "note": "第二批并行的收口复核，逐条在主会话验收。",
+      "deps": ["task-07", "task-08", "task-09"], "files": ["docs/审核记录.md"]
+    },
+    {
+      "id": "task-11", "no": "11", "name": "组装验收", "phase": "v0.3 收尾",
+      "version": "v1.3.0", "status": "未开始", "parallelGroup": "", "gate": false,
+      "estimate": "2–3 小时", "note": "端到端跑通 + 跨文件口径对账，全部 ✅ 才收工。",
+      "deps": ["gate-10"], "files": ["docs/验收报告.md"]
+    }
+  ]
+};
+</script>
+
+<script>
+/* ==========================================================================
+   渲染脚本（原生 JS，无任何依赖）。所有注释用中文。
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  /* ---------- 1. 常量与小工具 ---------- */
+
+  // 五态：多一个少一个都不合格。顺序即点击循环顺序。
+  var STATUS_LIST = ['未开始', '进行中', '完成', '阻塞', '返工'];
+  var STATUS_EMOJI = {
+    '未开始': '⬜', '进行中': '🔄', '完成': '✅', '阻塞': '⏸️', '返工': '↩️'
+  };
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function copy(o) { return JSON.parse(JSON.stringify(o)); }
+  function validStatus(v) { return STATUS_LIST.indexOf(v) >= 0 ? v : '未开始'; }
+  function today() {
+    var d = new Date();
+    function p(n) { return (n < 10 ? '0' : '') + n; }
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+
+  /* ---------- 2. 读取数据接口（全文件唯一的数据来源） ---------- */
+
+  // flow-data 是 type="application/json" 的数据块，浏览器不会执行它；
+  // 这里把它里面的 "window.TASK_FLOW_DATA = {...};" 取出来当严格 JSON 解析。
+  function readFlowData(text) {
+    var cleaned = String(text).trim()
+      .replace(/^window\.TASK_FLOW_DATA\s*=\s*/, '')
+      .replace(/;\s*$/, '');
+    return JSON.parse(cleaned);
+  }
+
+  // 归一化：补齐缺省字段、把非法状态退化成「未开始」、丢掉悬空依赖。
+  function normalizeData(obj) {
+    if (!obj || typeof obj !== 'object') { throw new Error('TASK_FLOW_DATA 必须是对象'); }
+    if (!obj.project || !obj.updatedAt || !Array.isArray(obj.nodes)) {
+      throw new Error('TASK_FLOW_DATA 缺 project / updatedAt / nodes');
+    }
+    var out = {
+      project: String(obj.project),
+      updatedAt: String(obj.updatedAt),
+      threshold: (typeof obj.threshold === 'number' && isFinite(obj.threshold))
+        ? Math.max(0, Math.min(100, obj.threshold)) : 70,
+      groups: Array.isArray(obj.groups) ? obj.groups.map(function (g) {
+        return { id: String(g.id), label: String(g.label || g.id), parallel: g.parallel !== false };
+      }) : [],
+      nodes: []
+    };
+    var seen = {};
+    obj.nodes.forEach(function (n, i) {
+      if (!n || !n.id) { throw new Error('第 ' + (i + 1) + ' 个节点缺 id'); }
+      if (seen[n.id]) { throw new Error('节点 id 重复：' + n.id); }
+      seen[n.id] = true;
+      out.nodes.push({
+        id: String(n.id),
+        no: String(n.no == null ? String(i + 1) : n.no),
+        name: String(n.name == null ? n.id : n.name),
+        phase: String(n.phase == null ? '' : n.phase),
+        version: String(n.version == null ? '' : n.version),
+        status: validStatus(n.status),
+        parallelGroup: String(n.parallelGroup == null ? '' : n.parallelGroup),
+        gate: !!n.gate,
+        estimate: String(n.estimate == null ? '' : n.estimate),
+        note: String(n.note == null ? '' : n.note),
+        deps: Array.isArray(n.deps) ? n.deps.map(String) : [],
+        files: Array.isArray(n.files) ? n.files.map(String) : []
+      });
+    });
+    // 悬空依赖：引用了不存在的 id 会断线，这里直接过滤掉并在页面上给出提示。
+    out.nodes.forEach(function (n) {
+      n.deps = n.deps.filter(function (d) { return !!seen[d]; });
+    });
+    return out;
+  }
+
+  var FILE_DATA = normalizeData(readFlowData($('flow-data').textContent)); // 文件里的原始状态，重置用
+  var DATA = copy(FILE_DATA);                                             // 当前数据（导入完整数据时会换）
+  window.TASK_FLOW_DATA = DATA;                                           // 对外保持这个名字
+  var states = {};                                                        // id -> 当前状态
+  var storageOK = true;
+
+  function storageKey() { return DATA.project + '/task-flow'; }
+  function nodesById() {
+    var m = {};
+    DATA.nodes.forEach(function (n) { m[n.id] = n; });
+    return m;
+  }
+  function byId(id) { var m = nodesById(); return m[id] || null; }
+
+  /* ---------- 3. 本机持久化（key 必须含项目名） ---------- */
+
+  function readStored() {
+    try {
+      var txt = window.localStorage.getItem(storageKey());
+      if (!txt) { return null; }
+      var o = JSON.parse(txt);
+      if (!o || o.project !== DATA.project || !o.states) { return null; }
+      return o.states;
+    } catch (e) { storageOK = false; return null; }
+  }
+  function save() {
+    try {
+      window.localStorage.setItem(storageKey(), JSON.stringify({
+        project: DATA.project, savedAt: today(), states: states
+      }));
+      storageOK = true;
+    } catch (e) { storageOK = false; }
+  }
+  function initStates() {
+    states = {};
+    DATA.nodes.forEach(function (n) { states[n.id] = validStatus(n.status); });
+    var stored = readStored();
+    if (stored) {
+      DATA.nodes.forEach(function (n) {
+        if (Object.prototype.hasOwnProperty.call(stored, n.id)) {
+          states[n.id] = validStatus(stored[n.id]);
+        }
+      });
+    }
+  }
+
+  /* ---------- 4. 拓扑分层：按 deps 算层，同一 parallelGroup 强制同层 ---------- */
+
+  function computeLayers() {
+    var m = nodesById();
+    var layer = {};
+    DATA.nodes.forEach(function (n) { layer[n.id] = 0; });
+    // 反复松弛直到稳定：先按依赖下沉，再把同组节点拉平到组内最深层。
+    var maxPass = DATA.nodes.length + 3;
+    for (var pass = 0; pass < maxPass; pass++) {
+      var changed = false;
+      DATA.nodes.forEach(function (n) {
+        var L = 0;
+        n.deps.forEach(function (d) {
+          if (m[d]) { L = Math.max(L, layer[d] + 1); }
+        });
+        if (L > layer[n.id]) { layer[n.id] = L; changed = true; }
+      });
+      DATA.groups.forEach(function (g) {
+        var members = DATA.nodes.filter(function (n) { return n.parallelGroup === g.id; });
+        if (!members.length) { return; }
+        var deepest = 0;
+        members.forEach(function (n) { deepest = Math.max(deepest, layer[n.id]); });
+        members.forEach(function (n) {
+          if (layer[n.id] < deepest) { layer[n.id] = deepest; changed = true; }
+        });
+      });
+      if (!changed) { break; }
+    }
+    return layer;
+  }
+
+  /* ---------- 5. 预计耗时解析（区间取中值；纯中文写不出来就告警） ---------- */
+
+  function parseEstimate(text) {
+    var s = String(text == null ? '' : text);
+    var nums = s.match(/\d+(?:\.\d+)?/g);
+    if (!nums || !nums.length) { return null; }
+    var vals = nums.map(Number);
+    var unit = 1; // 默认按小时
+    if (/分钟|分|min/i.test(s)) { unit = 1 / 60; }
+    else if (/天|日/i.test(s)) { unit = 8; }
+    var mid = (Math.min.apply(null, vals) + Math.max.apply(null, vals)) / 2;
+    return mid * unit;
+  }
+  function fmtHours(h) {
+    if (h < 1) { return Math.round(h * 60) + ' 分钟'; }
+    return (Math.round(h * 10) / 10) + ' 小时';
+  }
+
+  /* ---------- 6. 建 DOM：分层容器 + 节点卡片 ---------- */
+
+  function depLabel(n) {
+    var m = nodesById();
+    if (!n.deps.length) { return '无'; }
+    return n.deps.map(function (d) { return m[d] ? m[d].no : d; }).join(' · ');
+  }
+  function isFinalNode(n) { return n.name.indexOf('组装验收') >= 0; }
+
+  function buildFlow() {
+    var layersBox = $('layers');
+    var layerOf = computeLayers();
+    var maxLayer = 0;
+    DATA.nodes.forEach(function (n) { maxLayer = Math.max(maxLayer, layerOf[n.id]); });
+
+    var html = '';
+    for (var L = 0; L <= maxLayer; L++) {
+      var members = DATA.nodes.filter(function (n) { return layerOf[n.id] === L; });
+      if (!members.length) { continue; }
+      // 这一层属于哪个并行批次（以第一个带 parallelGroup 的节点为准）
+      var group = null;
+      for (var i = 0; i < members.length; i++) {
+        if (members[i].parallelGroup) {
+          group = DATA.groups.filter(function (g) { return g.id === members[i].parallelGroup; })[0] || null;
+          break;
+        }
+      }
+      html += '<div class="layer' + (group && group.parallel ? ' parallel' : '') + '" data-layer="' + L + '">';
+      html += '<div class="layer-head"><span class="layer-badge">第 ' + (L + 1) + ' 层</span>';
+      if (group && group.parallel) {
+        html += '<span class="batch-label">' + esc(group.label) + '</span><span>同层并排 = 可并行</span>';
+      } else {
+        html += '<span>串行 / 汇合节点</span>';
+      }
+      html += '</div><div class="layer-nodes' + (members.length === 1 ? ' single' : '') + '">';
+
+      members.forEach(function (n) {
+        var gate = !!n.gate;
+        var fin = isFinalNode(n);
+        var cls = 'node' + (gate ? ' is-gate' : '') + (fin ? ' is-final' : '');
+        html += '<article class="' + cls + '" data-id="' + esc(n.id) + '" data-status="未开始" tabindex="0" role="button"'
+             +  ' aria-label="切换节点 ' + esc(n.name) + ' 的状态"'
+             +  ' title="' + esc(n.files.length ? n.files.join('、') : '未登记文件') + '">';
+        html += '<div class="node-top"><span class="node-no">' + esc(n.no) + '</span><span class="badge">—</span></div>';
+        html += '<h3 class="node-name">' + esc(n.name) + '</h3>';
+        html += '<div class="node-tags"><span class="tag">' + esc(n.phase || '未分阶段') + '</span>'
+             +  '<span class="tag ver">' + esc(n.version || '未标版本') + '</span></div>';
+        if (gate || fin) {
+          html += '<div class="node-flags">';
+          if (gate) { html += '<span class="flag gate">🚪 审核门</span>'; }
+          if (fin) { html += '<span class="flag final">🧩 组装验收</span>'; }
+          html += '</div>';
+        }
+        html += '<div class="node-meta">'
+             +  '<div><span>⏱ 预计</span><b>' + esc(n.estimate || '未填') + '</b></div>'
+             +  '<div><span>⛓ 前置</span><b>' + esc(depLabel(n)) + '</b></div>'
+             +  '<div><span>📎 文件</span><b>' + n.files.length + ' 个</b></div>'
+             +  '</div>';
+        html += '<p class="node-note">' + esc(n.note || '（无备注）') + '</p>';
+        html += '<div class="node-hint">点一下切换状态 ↻</div>';
+        html += '</article>';
+      });
+      html += '</div></div>';
+    }
+    layersBox.innerHTML = html;
+
+    // 事件委托：点卡片 / 键盘 Enter、空格都切状态
+    layersBox.onclick = function (ev) {
+      var card = ev.target.closest ? ev.target.closest('.node') : null;
+      if (card) { cycleStatus(card.getAttribute('data-id')); }
+    };
+    layersBox.onkeydown = function (ev) {
+      if (ev.key !== 'Enter' && ev.key !== ' ') { return; }
+      var card = ev.target.closest ? ev.target.closest('.node') : null;
+      if (card) { ev.preventDefault(); cycleStatus(card.getAttribute('data-id')); }
+    };
+  }
+
+  /* ---------- 7. 折线连线：前置已完成的线变绿 ---------- */
+
+  function drawWires() {
+    var box = $('wires');
+    var flow = $('flow');
+    box.innerHTML = '';
+    var base = flow.getBoundingClientRect();
+    var rects = {};
+    DATA.nodes.forEach(function (n) {
+      var el = document.querySelector('.node[data-id="' + cssEscape(n.id) + '"]');
+      if (!el) { return; }
+      var r = el.getBoundingClientRect();
+      rects[n.id] = {
+        x: r.left - base.left + r.width / 2,
+        top: r.top - base.top,
+        bottom: r.bottom - base.top
+      };
+    });
+    function seg(x, y, w, h, done) {
+      var d = document.createElement('div');
+      d.className = 'wire' + (done ? ' done' : '');
+      d.style.left = x + 'px'; d.style.top = y + 'px';
+      d.style.width = Math.max(1, w) + 'px'; d.style.height = Math.max(1, h) + 'px';
+      box.appendChild(d);
+    }
+    DATA.nodes.forEach(function (n) {
+      if (!rects[n.id]) { return; }
+      n.deps.forEach(function (dep) {
+        var a = rects[dep], b = rects[n.id];
+        if (!a) { return; }
+        var done = states[dep] === '完成';
+        var mid = (a.bottom + b.top) / 2;
+        if (mid < a.bottom) { mid = a.bottom + 8; }
+        // 三段折线：源节点向下 → 水平横跨 → 目标节点向下（箭头收口）
+        seg(a.x - 1, a.bottom, 2, mid - a.bottom, done);
+        var x1 = Math.min(a.x, b.x), x2 = Math.max(a.x, b.x);
+        seg(x1, mid - 1, x2 - x1, 2, done);
+        seg(b.x - 1, mid, 2, b.top - mid, done);
+        var arrow = document.createElement('div');
+        arrow.className = 'wire-arrow' + (done ? ' done' : '');
+        arrow.style.left = b.x + 'px'; arrow.style.top = (b.top - 1) + 'px';
+        box.appendChild(arrow);
+      });
+    });
+  }
+  function cssEscape(s) { return String(s).replace(/["\\]/g, '\\$&'); }
+
+  /* ---------- 8. 「下一个该做的任务」：算优先级并给理由 ---------- */
+
+  function pickNext() {
+    var m = nodesById();
+    var layerOf = computeLayers();
+    var best = null;
+    DATA.nodes.forEach(function (n) {
+      var s = states[n.id];
+      var ready = n.deps.every(function (d) { return m[d] && states[d] === '完成'; });
+      var score, reason;
+      if (s === '进行中') {
+        score = 100; reason = '状态为进行中，先把它接着做完，不要同时开新任务。';
+      } else if (s === '返工') {
+        score = 90; reason = '状态为返工，退回来的问题不闭环，后面全卡住。';
+      } else if (s === '阻塞') {
+        score = 80; reason = '状态为阻塞（等人工），先把卡点问清楚或请使用者拍板。';
+      } else if (s === '未开始' && ready) {
+        score = 60; reason = '前置已全部完成、状态为未开始，它是当前最早可以开工的一个。';
+      } else if (s === '未开始') {
+        score = 20; reason = '状态为未开始，但前置还没完成，先等上游收口。';
+      } else {
+        score = -1; reason = '已完成。';
+      }
+      var cand = { node: n, score: score, reason: reason, layer: layerOf[n.id] || 0 };
+      if (!best
+          || cand.score > best.score
+          || (cand.score === best.score && cand.layer < best.layer)
+          || (cand.score === best.score && cand.layer === best.layer && cand.node.no < best.node.no)) {
+        best = cand;
+      }
+    });
+    if (!best || best.score < 0) {
+      return { done: true, name: '全部完成 🎉', meta: '所有节点都是「完成」', reason: '没有待办了：请对照台账做一次收尾复核，并把 updatedAt 改成当天。' };
+    }
+    var n = best.node;
+    var meta = '编号 ' + n.no + ' · ' + STATUS_EMOJI[states[n.id]] + ' ' + states[n.id]
+             + ' · 预计 ' + (n.estimate || '未填')
+             + ' · 前置 ' + depLabel(n)
+             + (n.gate ? ' · 🚪 审核门' : '')
+             + (isFinalNode(n) ? ' · 🧩 组装验收' : '');
+    return { done: false, name: n.name, meta: meta, reason: best.reason };
+  }
+
+  /* ---------- 9. 全量刷新（点一下之后立刻跑，不依赖刷新页面） ---------- */
+
+  function stateObject() {
+    return {
+      project: DATA.project,
+      updatedAt: DATA.updatedAt,
+      exportedAt: today(),
+      states: copy(states),
+      nodes: DATA.nodes.map(function (n) {
+        var c = copy(n); c.status = states[n.id]; return c;
+      })
+    };
+  }
+
+  function updateView() {
+    var total = DATA.nodes.length;
+    var done = DATA.nodes.filter(function (n) { return states[n.id] === '完成'; }).length;
+    var pct = total ? Math.round(done / total * 100) : 0;
+
+    // 顶部
+    $('project-name').textContent = DATA.project;
+    $('updated-at').textContent = DATA.updatedAt;
+    var saveEl = $('save-state');
+    if (storageOK) {
+      saveEl.className = '';
+      saveEl.textContent = '已存到本机浏览器 · 键 ' + storageKey();
+    } else {
+      saveEl.className = 'warn';
+      saveEl.textContent = '本机存储不可用，请用「导出状态 JSON」手动保存';
+    }
+
+    // 进度条
+    $('progress-text').innerHTML = done + ' <small>/ ' + total + ' 个节点完成</small>';
+    $('bar-fill').style.width = pct + '%';
+    var mark = $('bar-mark');
+    mark.style.left = DATA.threshold + '%';
+    mark.setAttribute('data-label', '里程碑 ' + DATA.threshold + '%');
+    $('progress-pct').textContent = pct + '%';
+    $('progress-note').textContent = pct >= DATA.threshold ? '✅ 已越过里程碑' : '距里程碑还差 ' + (DATA.threshold - pct) + '%';
+
+    // 下一个任务
+    var next = pickNext();
+    $('next-name').textContent = next.name;
+    $('next-meta').textContent = next.meta;
+    $('next-reason').textContent = '理由：' + next.reason;
+
+    // 总预计耗时：全部 / 剩余两个口径
+    var all = 0, left = 0, bad = 0;
+    DATA.nodes.forEach(function (n) {
+      var h = parseEstimate(n.estimate);
+      if (h === null) { bad++; return; }
+      all += h;
+      if (states[n.id] !== '完成') { left += h; }
+    });
+    $('time-all').textContent = fmtHours(all);
+    $('time-left').textContent = fmtHours(left);
+    $('time-warn').textContent = bad
+      ? '⚠️ 有 ' + bad + ' 个节点的耗时解析不出数字（如「半天」），上面合计偏小；建议改成「1–2 小时」这类带数字的写法。'
+      : '口径：区间取中值；分钟 / 天分别折算为 1/60 / 8 小时。';
+
+    // 节点配色与徽标
+    DATA.nodes.forEach(function (n) {
+      var el = document.querySelector('.node[data-id="' + cssEscape(n.id) + '"]');
+      if (!el) { return; }
+      var s = states[n.id];
+      el.setAttribute('data-status', s);
+      var b = el.querySelector('.badge');
+      if (b) { b.textContent = STATUS_EMOJI[s] + ' ' + s; }
+    });
+
+    // 图例计数
+    var counts = STATUS_LIST.map(function (s) {
+      return s + ' ' + DATA.nodes.filter(function (n) { return states[n.id] === s; }).length;
+    });
+    $('legend-count').textContent = '当前：' + counts.join(' / ');
+
+    // 可复制 JSON（点导出时下载的就是这份）
+    $('json-out').textContent = JSON.stringify(stateObject(), null, 2);
+    $('json-tip').textContent = '共 ' + total + ' 个节点；点「导出状态 JSON」下载 task-flow-state.json，「从 JSON 导入」兼容完整数据与只有状态映射两种格式。';
+
+    drawWires();
+  }
+
+  /* ---------- 10. 交互：点节点循环切五态 ---------- */
+
+  function cycleStatus(id) {
+    if (!byId(id)) { return; }
+    var cur = STATUS_LIST.indexOf(states[id]);
+    if (cur < 0) { cur = 0; }
+    states[id] = STATUS_LIST[(cur + 1) % STATUS_LIST.length];
+    save();
+    updateView();
+  }
+
+  /* ---------- 11. 导出 / 导入 / 重置 / 打印 ---------- */
+
+  function exportState() {
+    var text = JSON.stringify(stateObject(), null, 2);
+    $('json-out').textContent = text;
+    try {
+      var blob = new Blob([text], { type: 'application/json;charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'task-flow-state.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      $('json-tip').textContent = '已导出 task-flow-state.json，上方 JSON 可直接全选复制。';
+    } catch (e) {
+      $('json-tip').textContent = '浏览器拦住了下载，请直接全选复制上方 JSON：' + e.message;
+    }
+  }
+
+  function statesFromMap(map) {
+    var out = {};
+    Object.keys(map || {}).forEach(function (id) {
+      var v = map[id];
+      var s = (typeof v === 'string') ? v : (v && typeof v === 'object' ? v.status : '');
+      out[id] = validStatus(s);
+    });
+    return out;
+  }
+
+  // 兼容三种输入：① 完整数据（带 nodes 数组）② 带 states/statuses/statusMap 的对象
+  // ③ 只有状态映射的裸对象 { "task-01": "完成" } 或数组 [ { id, status } ]
+  function applyImport(obj) {
+    var nextStates = null, fullData = null;
+    if (Array.isArray(obj)) {
+      nextStates = {};
+      obj.forEach(function (item) {
+        if (item && item.id) { nextStates[item.id] = validStatus(item.status); }
+      });
+    } else if (obj && typeof obj === 'object') {
+      if (Array.isArray(obj.nodes) && obj.nodes.length) {
+        fullData = normalizeData(obj);
+        nextStates = {};
+        obj.nodes.forEach(function (n) {
+          if (n && n.id) { nextStates[n.id] = validStatus(n.status); }
+        });
+      } else if (obj.states || obj.statuses || obj.statusMap) {
+        var m = obj.states || obj.statuses || obj.statusMap;
+        if (typeof m !== 'object') { throw new Error('状态映射必须是对象'); }
+        nextStates = statesFromMap(m);
+      } else {
+        nextStates = statesFromMap(obj);
+      }
+    }
+    if (!nextStates || !Object.keys(nextStates).length) {
+      throw new Error('认不出格式；需要完整数据或状态映射');
+    }
+
+    if (fullData) {
+      DATA = fullData;
+      window.TASK_FLOW_DATA = DATA;
+      states = {};
+      DATA.nodes.forEach(function (n) { states[n.id] = validStatus(n.status); });
+      Object.keys(nextStates).forEach(function (id) {
+        if (byId(id)) { states[id] = nextStates[id]; }
+      });
+      buildFlow();
+    } else {
+      var applied = 0;
+      DATA.nodes.forEach(function (n) {
+        if (Object.prototype.hasOwnProperty.call(nextStates, n.id)) {
+          states[n.id] = nextStates[n.id]; applied++;
+        }
+      });
+      if (!applied) { throw new Error('状态映射里的 id 一个都对不上当前项目'); }
+    }
+    save();
+    updateView();
+  }
+
+  function resetToFile() {
+    DATA = copy(FILE_DATA);
+    window.TASK_FLOW_DATA = DATA;
+    states = {};
+    DATA.nodes.forEach(function (n) { states[n.id] = validStatus(n.status); });
+    save();
+    buildFlow();
+    updateView();
+    $('json-tip').textContent = '已重置为文件里 TASK_FLOW_DATA 的状态。';
+  }
+
+  $('btn-export').addEventListener('click', exportState);
+  $('btn-reset').addEventListener('click', resetToFile);
+  $('btn-print').addEventListener('click', function () { window.print(); });
+  $('file-import').addEventListener('change', function () {
+    var f = this.files && this.files[0];
+    var self = this;
+    if (!f) { return; }
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        applyImport(JSON.parse(String(e.target.result)));
+        $('json-tip').textContent = '导入成功：' + f.name;
+      } catch (err) {
+        $('json-tip').textContent = '导入失败：' + err.message;
+      }
+    };
+    reader.onerror = function () { $('json-tip').textContent = '读取文件失败，请重新选一次。'; };
+    reader.readAsText(f, 'utf-8');
+    self.value = ''; // 允许连续选同一个文件
+  });
+
+  // 窗口尺寸变化 / 字体加载完成后重画折线
+  window.addEventListener('resize', drawWires);
+  window.addEventListener('load', drawWires);
+
+  /* ---------- 12. 启动 ---------- */
+  initStates();
+  buildFlow();
+  updateView();
+})();
+</script>
+</body>
+</html>
