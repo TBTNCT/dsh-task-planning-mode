@@ -11,8 +11,8 @@
 | 项 | 内容 |
 |---|---|
 | 名称 | `token-estimator` |
-| 形态 | **preset 自带的本地 JS 插件**（不是独立 npm 包）：`presets/task-planning/plugins/token-estimator/index.js` |
-| 挂载方式 | `presets/task-planning/agent.cordis.yml` 里一行：`name: './plugins/token-estimator/index.js'`（相对 preset 目录） |
+| 形态 | **preset 自带的本地 JS 插件**（不是独立 npm 包）：`presets/task-planning-bundle/plugins/token-estimator/index.js` |
+| 挂载方式 | `presets/task-planning-bundle/cordis.patch.yml` 里一行：`name: './plugins/token-estimator/index.js'`（相对 preset 目录） |
 | 宿主 | DSH desktop profile（本机 DSH_HOME = `%USERPROFILE%\.dsh`） |
 | 目的 | 让「任务规划」模式的 token 估算有硬数据：**运行时计量优先，静态估算兜底** |
 
@@ -30,8 +30,8 @@
 
 **返回必须包含**（缺一不可）：
 
-1. 低估算 / 高估算 / 合计（保守口径：输入+输出 ×1.5 重试系数）
-2. 是否触发 **6000 万/单对话** 阈值 → 若触发，明确输出"必须二次拆分"
+1. 低估算 / 高估算 / 合计 = 工具 total = (低+高)/2 × 1.5
+2. 是否触发「任务拆分阈值（6000 万）」 → 若触发，明确输出"必须二次拆分"
 3. 估算依据（哪些事实支撑这个量级）
 4. 一句免责说明："这是估算，不是承诺"
 5. **校准说明**：返回值里的 `calibrationNotice` 必须含「**本估算基于 ds4.1f 消耗计算**」，
@@ -39,7 +39,7 @@
    `breakdown.calibrationFactor` 给出所用系数（当前为 `20`）。渲染文本同样要出现这一标注，见 §2.5。
 
 > **2026-10-16 变更**：曾有的第 3 项「**2 亿/单任务** 阈值（触发则必须告知使用者并取得确认）」已删除，
-> 不再是判断标准；现在的阈值只有「6000 万/单对话」。同步改动见 `CHANGELOG.md` 的 `[1.1.0]`。
+> 不再是判断标准；现在的阈值只有「任务拆分阈值（6000 万）」。同步改动见 `CHANGELOG.md` 的 `[1.1.0]`。
 
 ### 工具 2：`usage_report`
 
@@ -61,7 +61,7 @@
 | 依据 | 使用者**实测**：模型 `deepseek-v4.1-flash`（简称 **ds4.1f**）的真实消耗，平均约为原静态公式输出的 **20 倍** |
 | 作用点 | **只乘在 `estimate()` 里 `raw` 那一行**（`raw = (…) × 乘子 × CALIBRATION_FACTOR`）。全文不许出现第二处乘 20，否则变成 400 倍 |
 | 不受影响的常数 | `LOW_FACTOR`（0.8）/ `HIGH_FACTOR`（2.5）/ `RETRY_FACTOR`（1.5）语义不变——它们是**区间与重试系数**，不是标定倍率，混用就没人说得清某个数代表什么 |
-| 阈值 | **6000 万/单对话保持不变**，判断口径仍是单任务/单对话。校准后更容易触发，**这是正确行为**；不许为了不触发报警把系数调小或把阈值抬高 |
+| 阈值 | **任务拆分阈值（6000 万）保持不变**，判断口径是单任务预估高值。校准后更容易触发，**这是正确行为**；不许为了不触发报警把系数调小或把阈值抬高 |
 | 必须标注 | 返回值 `calibrationNotice`、`estimate_tokens` 渲染行 `校准：×20（本估算基于 ds4.1f 消耗计算）`、`usage_report` 的 `notes`，三处都要出现「本估算基于 ds4.1f 消耗计算」 |
 | 两个口径不可相减 | `usage_report` 的「已用」是**运行时实测**的本会话累计，静态对照是**校准后的公式预估**，量纲与来源都不同，只能并列陈述，不能做差 |
 | 标定后的量级 | 以本项目（8 个主任务 / 约 40 文件 / 6 万字文档 / 5 千行既有代码）代入：**校准前约 4.6M–14.5M → 校准后约 92M–290M** |
@@ -132,7 +132,7 @@
 './plugins/...' → 'file:/// 绝对路径' → '独立 npm 包' 顺序回退，并把结论写进记录。
 **静态估算必须按 ×20 校准**：`CALIBRATION_FACTOR = 20` 只许乘在 `estimate()` 的 `raw` 那一行
 （不许改 `LOW_FACTOR`/`HIGH_FACTOR`/`RETRY_FACTOR`，更不许出现第二处乘 20），且返回值与渲染文本都要标注
-「本估算基于 ds4.1f 消耗计算」；「6000 万/单对话」阈值保持不变。
+「本估算基于 ds4.1f 消耗计算」；「任务拆分阈值（6000 万）」保持不变。
 最后告诉我人工如何验证（调什么、看什么）。
 ```
 
@@ -143,7 +143,8 @@
 | 日期 | 变更 |
 |---|---|
 | 2026-11-12 | 静态估算统一 ×20 校准（实测 ds4.1f 实际消耗约为原输出 20 倍），返回值与渲染文本必须标注「本估算基于 ds4.1f 消耗计算」。 |
-| 2026-11-13 | 任务 20 人工决策 4：`usage_report` 取消失效的「已用 ≤ 静态高估算」对照判据，回归纯报告（只并列陈述已用与静态区间、不做跨口径比较）；`estimate_tokens` 的 `triggers.conversationLimit` 由 `total` 改为按 `high` 判定，对齐 `PROMPT.md` §七.7/§十五.3「判阈值一律用高值」。详见 §八。 |
+| 2026-11-13 | 任务 20 人工决策 4：`usage_report` 取消失效的「已用 ≤ 静态高估算」对照判据，回归纯报告（只并列陈述已用与静态区间、不做跨口径比较）；`estimate_tokens` 的 `triggers.taskSplitExceeded` 由 `total` 改为按 `high` 判定，对齐 `PROMPT.md` §七.7/§十五.3「判阈值一律用高值」。详见 §八。 |
+| 2026-11-13 | 任务 20 三轮检查整改：常量/字段改名为 `TASK_SPLIT_LIMIT` / `taskSplitExceeded`，全仓库活文档同步；阈值措辞统一为「任务拆分阈值（6000 万）」；舍入规则改为「按工具 `fmt()` 显示值照抄」；合计口径统一为「工具 total = (低+高)/2 × 1.5」；插件路径修正为 `presets/task-planning-bundle/…`。旧名 → 新名映射与历史文件例外清单见 `20-报告.md` §九。 |
 
 ---
 
@@ -155,9 +156,9 @@
 |---|---|
 | 6000 万的原义 | **任务拆分阈值**：`PROMPT.md` §零③ / §七.7 / §七.8 / §八.1 / §十五.3 与本文档 §2.5 —— 判据对象是「**单个任务的静态预估高值**」，高值 > 6000 万就拆成多个不超过它的任务。**它不是本会话的 token 预算，也不是进度条的分母** |
 | 作废的旧判据 | `runtime.used <= staticResult.high`（「已用 ≤ 静态高估算」）。×20 校准后默认规模高估算抬到 **35,555,000**，而本项目历史会话实测「已用」是万级 → 恒不触发，「已超过预估」提醒事实上失效（`11-报告.md` §四 第 3 行 / §7.1 第 7 项） |
-| 新口径（纯报告） | `usage_report` 只并列陈述「本会话已用」与「静态估算区间（低～高 / 保守合计）」，**不做任何大小比较、不据此给拆分建议**；`advice` 统一指向 `estimate_tokens` 的 `triggers.conversationLimit`。这与 `PROMPT.md` §七.5「两个口径不能相减、也不能用实测远低于预估判定估算失真」一致 |
-| 判阈值改为按高值 | `estimate()` 原写 `total > CONVERSATION_LIMIT`，与 `PROMPT.md` §七.7/§十五.3「判断 6000 万阈值一律用高值」不符。因 `total = 0.99 × high`，当 `high ∈ (6000 万, 6060.6 万]` 时会误判为「未触发」；现改为 `high > CONVERSATION_LIMIT`。`total` 仍照常返回，只作总量参考（§七.8） |
+| 新口径（纯报告） | `usage_report` 只并列陈述「本会话已用」与「静态估算区间（低～高 / 保守合计）」，**不做任何大小比较、不据此给拆分建议**；`advice` 统一指向 `estimate_tokens` 的 `triggers.taskSplitExceeded`。这与 `PROMPT.md` §七.5「两个口径不能相减、也不能用实测远低于预估判定估算失真」一致 |
+| 判阈值改为按高值 | `estimate()` 原写 `total > TASK_SPLIT_LIMIT`，与 `PROMPT.md` §七.7/§十五.3「判断 6000 万阈值一律用高值」不符。因 `total = 0.99 × high`，当 `high ∈ (6000 万, 6060.6 万]` 时会误判为「未触发」；现改为 `high > TASK_SPLIT_LIMIT`。`total` 仍照常返回，只作总量参考（§七.8） |
 | 降级路径 | 运行时计量不可用时只给静态区间 + 原因，不编造对照结论；建议里写明「恢复后重新调用，拆分判定仍以 estimate_tokens 高值为准」 |
-| 不变的东西 | `output.schema` 的字段名与类型、`estimate_tokens` 的 low/high/total 三个数值、`CALIBRATION_NOTICE`、`LOW_FACTOR` / `HIGH_FACTOR` / `RETRY_FACTOR`、`CONVERSATION_LIMIT` 与 6000 万阈值本身 |
+| 不变的东西 | `output.schema` 的字段名与类型、`estimate_tokens` 的 low/high/total 三个数值、`CALIBRATION_NOTICE`、`LOW_FACTOR` / `HIGH_FACTOR` / `RETRY_FACTOR`、`TASK_SPLIT_LIMIT` 与 6000 万阈值本身 |
 | 范围说明 | 本次改动越过任务 20 任务书「只做对齐、不重新实现功能」的负面清单，属**人工裁决覆盖卡片判据**（同 13A「直接删分支」），登记在 `20-报告.md` §八 |
 | 代价 | `usage_report` 失去「已超过预估 / 接近上限」的提前提醒能力，降级为纯报告工具；此后果已在 `20-报告.md` §八 登记，由使用者明确接受 |

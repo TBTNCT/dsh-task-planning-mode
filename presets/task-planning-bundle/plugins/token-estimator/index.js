@@ -3,7 +3,7 @@
  *
  * 提供两个工具：
  *   - estimate_tokens：按可解释的静态公式给出 token 低-高区间，并判断是否触发
- *     「单对话 6000 万」阈值。
+ *     「任务拆分阈值（6000 万）」。
  *   - usage_report：只如实报告本会话已用 token 与静态估算区间（仅作预算参考），读不到运行时计量
  *     就给降级说明；不做任何跨口径的大小比较，是否二次拆分一律看 estimate_tokens 的高值判定。
  *
@@ -48,8 +48,8 @@
  * 这个 ×20 来自使用者实测：真实消耗平均约为原公式输出的 20 倍（模型 deepseek-v4.1-flash，简称 ds4.1f）。
  * `docs/实施记录/03` 里的 4.64M – 14.49M 是**校准前**的历史口径，按铁律只归档不追改，不代表现口径。
  *
- * ⚠️ 校准后更容易触发「单对话 6000 万」阈值——**这是正确行为**：阈值保持不变，触发就拆分，
- *    不许为了不触发报警把 `CALIBRATION_FACTOR` 调小或把 `CONVERSATION_LIMIT` 抬高。
+ * ⚠️ 校准后更容易触发「任务拆分阈值（6000 万）」——**这是正确行为**：阈值保持不变，触发就拆分，
+ *    不许为了不触发报警把 `CALIBRATION_FACTOR` 调小或把 `TASK_SPLIT_LIMIT` 抬高。
  *
  * ⚠️ 这是估算，不是承诺；数字来自上面的可解释公式，不来自任何被伪造的用量。本估算基于 ds4.1f 消耗计算。
  */
@@ -69,8 +69,8 @@ export const inject = ["tools"];
 
 // ── 阈值与公式常量（改这里就等于改算法，注释里的量纲必须同步）──────────────────
 
-/** 单对话上限：6000 万 token，超过必须二次拆分。 */
-const CONVERSATION_LIMIT = 60_000_000;
+/** 任务拆分阈值：单任务预估高值 > 6000 万 token 就必须二次拆分。 */
+const TASK_SPLIT_LIMIT = 60_000_000;
 // 注：曾有的「单任务 2 亿」上限已按使用者要求删除，不再是判断标准；
 // 若今后要恢复，须同时改回 PROMPT.md 的硬约束 ③ 与 §七/§八/§十五（口径必须一处不留地同步）。
 
@@ -91,7 +91,7 @@ const DEFAULT_ITERATIONS = 3;
  *   ① 依据：使用者实测 ds4.1f（deepseek-v4.1-flash）的实际消耗约为原公式输出的 20 倍；
  *   ② **这是标定系数，改它等于改估算口径**（不是"区间偏保守就调一下"的旋钮）；
  *   ③ 作用点：**只乘在 `raw` 之后那一条语句**，`LOW_FACTOR` / `HIGH_FACTOR` 的语义不变。
- * 阈值 `CONVERSATION_LIMIT` 不随它变化，仍是 6000 万。
+ * 阈值 `TASK_SPLIT_LIMIT` 不随它变化，仍是 6000 万。
  */
 const CALIBRATION_FACTOR = 20;
 
@@ -196,13 +196,13 @@ function estimate(stage, scaleRaw) {
   // 且「阈值判断永远是单个任务对 6000 万，合计超了不等于触发」。这里的 6000 万是**任务拆分阈值**，
   // 不是本会话的预算上限；total 只是保守合计（total = 0.99 × high），不参与判阈值。
   // 用 total 会在 high ∈ (6000 万, 6060.6 万] 时误判为「未触发」（任务 20 决策 4 对齐修正）。
-  const conversationLimit = high > CONVERSATION_LIMIT;
+  const taskSplitExceeded = high > TASK_SPLIT_LIMIT;
 
   const verdicts = [];
   verdicts.push(
-    conversationLimit
-      ? `⚠️ 触发「单对话 ${fmt(CONVERSATION_LIMIT)}」阈值：必须二次拆分后再执行。`
-      : `未触发「单对话 ${fmt(CONVERSATION_LIMIT)}」阈值。`,
+    taskSplitExceeded
+      ? `⚠️ 触发「任务拆分阈值 ${fmt(TASK_SPLIT_LIMIT)}」：必须二次拆分后再执行。`
+      : `未触发「任务拆分阈值 ${fmt(TASK_SPLIT_LIMIT)}」。`,
   );
 
   const basis = [
@@ -231,7 +231,7 @@ function estimate(stage, scaleRaw) {
       calibrationFactor: CALIBRATION_FACTOR,
     },
     triggers: {
-      conversationLimit,
+      taskSplitExceeded,
     },
     verdicts,
     basis,
@@ -239,7 +239,7 @@ function estimate(stage, scaleRaw) {
     disclaimer:
       "这是估算，不是承诺：数字来自可解释的静态公式，实际用量随对话轮次与返工次数变化。" +
       CALIBRATION_NOTICE +
-      "「单对话 6000 万」阈值不随校准改变，触发就必须拆分。",
+      "「任务拆分阈值（6000 万）」不随校准改变，触发就必须拆分。",
   };
 }
 
@@ -343,7 +343,7 @@ const ESTIMATE_TOKENS_TOOL = {
   name: "estimate_tokens",
   description:
     "按可解释的静态公式估算一个阶段/任务的 token 消耗：给出低-高区间与保守合计，并判断是否触发" +
-    "「单对话 6000 万」阈值。用于把「拍脑袋估 token」换成有依据的区间估算。" +
+    "「任务拆分阈值（6000 万）」判定。用于把「拍脑袋估 token」换成有依据的区间估算。" +
     "这是估算不是承诺。",
   parameters: {
     type: "object",
@@ -382,7 +382,7 @@ const ESTIMATE_TOKENS_TOOL = {
         calibrationFactor: { type: "integer" },
       }),
       triggers: obj({
-        conversationLimit: { type: "boolean" },
+        taskSplitExceeded: { type: "boolean" },
       }),
       verdicts: { type: "array", items: { type: "string" } },
       basis: { type: "array", items: { type: "string" } },
@@ -428,7 +428,7 @@ function createUsageReportTool(ctx) {
   name: "usage_report",
   description:
     "报告本会话（或指定会话/任务）已使用的 token：优先读运行时计量，读不到时明确说明原因并给静态估算区间（仅作预算参考）。" +
-    "两个口径不同，只并列陈述、不做大小比较；是否需要二次拆分一律看 estimate_tokens 的 triggers.conversationLimit（按高值判 6000 万任务拆分阈值）。" +
+    "两个口径不同，只并列陈述、不做大小比较；是否需要二次拆分一律看 estimate_tokens 的 triggers.taskSplitExceeded（按高值判「任务拆分阈值（6000 万）」）。" +
     "读不到运行时计量不算失败，工具一定返回可用信息，绝不中断对话。",
   parameters: {
     type: "object",
@@ -493,6 +493,7 @@ function createUsageReportTool(ctx) {
     const scope = scopeParts.join(" · ");
 
     const notes = [];
+    notes.push("taskId 仅作标注：静态估算规模由 scale 决定（不传则用默认规模）；「已用」是整会话累计，不代表该任务的用量或估算。");
     const session = exec && exec.agent && exec.agent.session ? exec.agent.session : undefined;
     if (sessionId) {
       notes.push("本版本只报告当前会话：sessionId 参数仅用于标注，不会去读其它会话的日志。");
@@ -524,7 +525,7 @@ function createUsageReportTool(ctx) {
         `本会话已用 ${fmt(runtime.used)}（${runtime.used} token）；` +
         `静态估算区间 ${fmt(staticResult.low)} ～ ${fmt(staticResult.high)}（保守合计 ${fmt(staticResult.total)}）仅作预算参考。` +
         "两者口径不同，不做大小比较。";
-      advice = "是否触发二次拆分一律看 estimate_tokens 的 triggers.conversationLimit（按高值判单任务 6000 万阈值）；本报告不据已用数值作拆分判断。";
+      advice = "是否触发二次拆分一律看 estimate_tokens 的 triggers.taskSplitExceeded（按高值判「任务拆分阈值（6000 万）」）；本报告不据已用数值作拆分判断。";
       if (runtime.detail && typeof runtime.detail.cacheReadTokens === "number") {
         notes.push(
           `明细：未缓存输入 ${runtime.detail.uncachedInputTokens} / 输出 ${runtime.detail.outputTokens}` +
@@ -540,14 +541,14 @@ function createUsageReportTool(ctx) {
 
     notes.push(
       "对照口径（v1.3.0 任务 20 决策 4）：本工具只如实报告用量与静态估算区间，不做跨口径比较；" +
-        "「单任务 6000 万」是任务拆分阈值，判定归 estimate_tokens（按高值）。",
+        "「任务拆分阈值（6000 万）」判定归 estimate_tokens（按高值）。",
     );
     notes.push("本报告不伪造任何用量：数字要么来自运行时计量（附来源），要么来自上面可解释的静态公式。");
 
     const disclaimer =
       "这是估算，不是承诺：「已用」来自运行时计量（附来源），静态对照来自可解释的静态公式。" +
       CALIBRATION_NOTICE +
-      "两个口径不同，不能相减、也不做大小比较；是否二次拆分一律看 estimate_tokens 按高值对「单任务 6000 万」的判定。";
+      "两个口径不同，不能相减、也不做大小比较；是否二次拆分一律看 estimate_tokens 按高值对「任务拆分阈值（6000 万）」的判定。";
 
     return Promise.resolve({
       scope,
