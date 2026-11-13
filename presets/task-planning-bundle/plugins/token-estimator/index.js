@@ -4,7 +4,8 @@
  * 提供两个工具：
  *   - estimate_tokens：按可解释的静态公式给出 token 低-高区间，并判断是否触发
  *     「单对话 6000 万」阈值。
- *   - usage_report：优先读运行时计量（本会话已用 token），读不到时降级为静态对照。
+ *   - usage_report：只如实报告本会话已用 token 与静态估算区间（仅作预算参考），读不到运行时计量
+ *     就给降级说明；不做任何跨口径的大小比较，是否二次拆分一律看 estimate_tokens 的高值判定。
  *
  * ── 为什么本文件只用 `node:` 内置模块、一个裸包都不 import ──────────────────────
  * 本插件随 bundle 包分发（`presets/task-planning-bundle/`）。该目录向上没有任何
@@ -191,7 +192,11 @@ function estimate(stage, scaleRaw) {
   const high = Math.round(raw * HIGH_FACTOR);
   const total = Math.round(((low + high) / 2) * RETRY_FACTOR);
 
-  const conversationLimit = total > CONVERSATION_LIMIT;
+  // 判阈值一律用「高值」：PROMPT.md §七.7 / §七.8 / §十五.3 写死「判断 6000 万阈值一律用高值」，
+  // 且「阈值判断永远是单个任务对 6000 万，合计超了不等于触发」。这里的 6000 万是**任务拆分阈值**，
+  // 不是本会话的预算上限；total 只是保守合计（total = 0.99 × high），不参与判阈值。
+  // 用 total 会在 high ∈ (6000 万, 6060.6 万] 时误判为「未触发」（任务 20 决策 4 对齐修正）。
+  const conversationLimit = high > CONVERSATION_LIMIT;
 
   const verdicts = [];
   verdicts.push(
@@ -422,7 +427,8 @@ function createUsageReportTool(ctx) {
   return {
   name: "usage_report",
   description:
-    "报告本会话（或指定会话/任务）已使用的 token：优先读运行时计量，读不到时明确说明原因并给静态估算对照。" +
+    "报告本会话（或指定会话/任务）已使用的 token：优先读运行时计量，读不到时明确说明原因并给静态估算区间（仅作预算参考）。" +
+    "两个口径不同，只并列陈述、不做大小比较；是否需要二次拆分一律看 estimate_tokens 的 triggers.conversationLimit（按高值判 6000 万任务拆分阈值）。" +
     "读不到运行时计量不算失败，工具一定返回可用信息，绝不中断对话。",
   parameters: {
     type: "object",
@@ -496,7 +502,7 @@ function createUsageReportTool(ctx) {
     const staticResult = estimate(taskId ? `任务 ${taskId}` : "当前会话", args.scale);
     notes.push(
       `静态对照已按 ×${CALIBRATION_FACTOR} 校准（本估算基于 ds4.1f 消耗计算）；` +
-        "「已用」是运行时实测的本会话累计，两者口径不同，不能相减。",
+        "「已用」是运行时实测的本会话累计，静态估算是另一口径的阶段预算参考；两者不能相减，也不做大小比较。",
     );
 
     // 运行时计量（可被环境变量强制关闭，用于验证降级路径）。
@@ -510,18 +516,15 @@ function createUsageReportTool(ctx) {
     let comparison;
     let advice;
     if (runtime.available) {
-      if (runtime.used <= staticResult.high) {
-        comparison = `已用 ${fmt(runtime.used)} 仍在静态高估算 ${fmt(staticResult.high)} 之内。`;
-      } else {
-        comparison = `已用 ${fmt(runtime.used)} 已超过静态高估算 ${fmt(staticResult.high)}，说明实际返工/探索比预估更多。`;
-      }
-      if (runtime.used > CONVERSATION_LIMIT) {
-        advice = `已用超过单对话 ${fmt(CONVERSATION_LIMIT)} 阈值：必须二次拆分。`;
-      } else if (runtime.used > staticResult.high) {
-        advice = "用量已高于静态高估算，建议先收尾当前阶段、把剩余工作拆到新对话。";
-      } else {
-        advice = "用量在预估区间内，可继续当前阶段。";
-      }
+      // 任务 20 决策 4（按阈值原义对齐）：旧的「已用 ≤ 静态高估算」对照判据作废。
+      // 6000 万是「单任务预估高值 > 60M 就要拆任务」的**拆分阈值**，不是本会话的预算；
+      // 「已用」（会话累计）与「静态估算」（阶段预估）是两个口径，PROMPT.md §七.5 禁止相减/据此判定失真。
+      // 因此这里只并列陈述、不做任何大小比较；拆分判定统一交回 estimate_tokens。
+      comparison =
+        `本会话已用 ${fmt(runtime.used)}（${runtime.used} token）；` +
+        `静态估算区间 ${fmt(staticResult.low)} ～ ${fmt(staticResult.high)}（保守合计 ${fmt(staticResult.total)}）仅作预算参考。` +
+        "两者口径不同，不做大小比较。";
+      advice = "是否触发二次拆分一律看 estimate_tokens 的 triggers.conversationLimit（按高值判单任务 6000 万阈值）；本报告不据已用数值作拆分判断。";
       if (runtime.detail && typeof runtime.detail.cacheReadTokens === "number") {
         notes.push(
           `明细：未缓存输入 ${runtime.detail.uncachedInputTokens} / 输出 ${runtime.detail.outputTokens}` +
@@ -530,17 +533,21 @@ function createUsageReportTool(ctx) {
       }
       if (runtime.asOfSeq >= 0) notes.push(`数据切点 asOfSeq=${runtime.asOfSeq}。`);
     } else {
-      comparison = "无法对照：运行时计量不可用，以下只有静态估算。";
-      advice = "静态估算偏保守；若连续多个阶段实际用量都高于静态高估算，请在实施记录里反馈以便校准公式。";
+      comparison = "运行时计量不可用（原因见备注），以下只有静态估算区间（仅作预算参考）。";
+      advice = "运行时计量恢复后请重新调用本报告；是否需要二次拆分仍以 estimate_tokens 的高值判定为准。";
       notes.push(`运行时计量不可用（原因）：${runtime.reason}`);
     }
 
+    notes.push(
+      "对照口径（v1.3.0 任务 20 决策 4）：本工具只如实报告用量与静态估算区间，不做跨口径比较；" +
+        "「单任务 6000 万」是任务拆分阈值，判定归 estimate_tokens（按高值）。",
+    );
     notes.push("本报告不伪造任何用量：数字要么来自运行时计量（附来源），要么来自上面可解释的静态公式。");
 
     const disclaimer =
       "这是估算，不是承诺：「已用」来自运行时计量（附来源），静态对照来自可解释的静态公式。" +
       CALIBRATION_NOTICE +
-      "两个口径不同，不能相减；「单对话 6000 万」阈值不随校准改变。";
+      "两个口径不同，不能相减、也不做大小比较；是否二次拆分一律看 estimate_tokens 按高值对「单任务 6000 万」的判定。";
 
     return Promise.resolve({
       scope,
