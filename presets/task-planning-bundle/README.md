@@ -4,7 +4,7 @@
 > **不适用**：DSH 0.1.x 的目录机制（那套见 [`../task-planning/`](../task-planning/)，在本机运行版本上是死数据，见 [`../../docs/实施记录/01-预设机制冲突-运行时版本不符.md`](../../docs/实施记录/01-预设机制冲突-运行时版本不符.md)）
 > **本包自带 4 样东西**（其余 preset 子插件全部来自 DSH 安装自带的包）：
 > ① `cordis.patch.yml`（组合补丁）；② `PROMPT.md`（模式系统提示词正文，任务 04，由 persona 行的 `!!js` 按包名读入）；
-> ③ `plugins/token-estimator/`（本地工具插件，任务 03，零第三方依赖）；④ `skills/planning-templates/`（规划文档模板 skill，任务 05）。
+> ③ `plugins/token-estimator/`（本地工具插件，任务 03，零第三方依赖）；④ `skills/planning-templates/`（规划文档模板 skill，任务 05；内含流程图模板 `assets/task-flow.html`，任务 12）。
 
 ## 〇、本包的文件清单
 
@@ -12,9 +12,10 @@
 task-planning-bundle/
 ├── package.json                          # dsh.bundle.patch → ./cordis.patch.yml；包名 dsh-task-planning-preset
 ├── cordis.patch.yml                      # insert 一行 @deepseek-ai/dsh-agent-preset（preset 本体）
-├── PROMPT.md                             # 模式系统提示词正文（15 小节 + 12 条硬约束 + 4 组 25 条作业纪律，哨兵 v10）
-├── plugins/token-estimator/index.js      # 本地工具：estimate_tokens / usage_report
-├── skills/planning-templates/SKILL.md    # 规划文档模板：5 类文档的【必须】/【可选】章节 + 可复制骨架
+├── PROMPT.md                             # 模式系统提示词正文（15 小节 + 12 条硬约束 + 4 组 25 条作业纪律，哨兵 v11）
+├── plugins/token-estimator/index.js      # 本地工具：estimate_tokens / usage_report（含 ×20 校准）
+├── skills/planning-templates/SKILL.md    # 规划文档模板：5 类文档的【必须】/【可选】章节 + 可复制骨架 + 骨架六（流程图）+ 模式自省规则
+├── skills/planning-templates/assets/task-flow.html   # 任务执行流程图模板（单文件零外链，只换 window.TASK_FLOW_DATA）→ 生成产出的 docs/工作流程/00-任务执行流程图.html
 └── README.md                             # 本文件
 ```
 
@@ -63,7 +64,7 @@ static Config = z.object({
    ```
 
    （安装对话框接受「包名（可带版本）、Git 地址、压缩包或本地绝对路径」，本地路径会直接读本目录的 `package.json`。）
-4. 等 Host 读出 `dsh-task-planning-preset` 与版本 `1.2.0`，点 **安装**，等 pnpm 跑完。
+4. 等 Host 读出 `dsh-task-planning-preset` 与版本 `1.3.0`，点 **安装**，等 pnpm 跑完。
 5. 安装完成界面点 **立即启用**（或回插件列表打开该组合包的开关）。
 6. **新开一个会话**，模式选择器里应出现「**任务规划**」。
    - 若没有：**重启桌面端**再新开会话（未启用 HMR 的 profile，组合变更保留到重启）。

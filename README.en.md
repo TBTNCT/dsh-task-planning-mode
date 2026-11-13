@@ -25,10 +25,11 @@ What you get:
 |---|---|
 | Requirements confirmation | A read-back of "here is what I understand you want", so you can catch misunderstandings before any work starts; **one per version, plus a single overall confirmation at the end** |
 | Version iteration plan | Splits the project into versions by capability stage (skeleton → core capability → wrap-up/acceptance) and **gets your sign-off on the split before asking version by version** |
-| `docs/工作流程/` task files | One file per task, each containing a **copy-paste-ready prompt**; one task = one new conversation |
+| `docs/工作流程/` task files | One file per task, each containing a **copy-paste-ready prompt**; one task = one new conversation; every task ends with a **section 6 "handover"**: the decisions you have to make, plus the estimated time for the next task |
+| `docs/工作流程/00-任务执行流程图.html` | **Task flow chart**: double-click to open it in a browser and see the whole picture (dependencies, parallelisable batches, progress bar, "the next task you should do"); click a card to cycle its state — state is stored only on your machine |
 | `docs/优化提示词/01-通用规范.md` | Your project's own ground rules, read before every task |
 | `docs/优化提示词/执行进度.md` | The single source of truth across sessions: status, commit hash, key numbers |
-| Token estimate table | Per-task low/high range, plus whether it crosses the 60M threshold |
+| Token estimate table | Per-task low/high range, plus whether it crosses the 60M threshold; **calibrated ×20** against measured ds4.1f consumption, and every output is labelled "this estimate is based on ds4.1f consumption" |
 | Execution order | "Do this first, then that", every step with a workspace-relative path; **the version dependency graph marks which tasks can run in parallel** |
 
 > Note: the mode's own prompts and generated documents are written in **Chinese**. The mode is designed for
@@ -162,6 +163,12 @@ Uninstall** (that step writes to the profile, so the script deliberately does no
    Copy the prompt from section 3 of each task file into the new conversation. **Tasks marked "parallelisable" can
    run in 2–3 conversations at once**, but every parallel batch is followed by an **assembly acceptance** task that
    has to pass before that batch really counts as done.
+9. **Double-click `docs/工作流程/00-任务执行流程图.html` first**: it shows the whole picture at a glance — which
+   dependency is still open, which batch can run in parallel, how far along you are, and "the next task you should
+   do". Click a card to change its state; state lives only in your local browser.
+10. **Three things happen at the end of every task**: ① the executor updates that node's state in the flow chart;
+    ② it asks you the decisions listed in the task's handover section, one by one (it is not allowed to decide for
+    you); ③ it tells you the **estimated time of the next task** so you can plan.
 
 > Two rules people skip most often:
 > ① **one task = one new conversation** (clean context, stable results);
@@ -209,9 +216,12 @@ work in principle — but it has **not been verified**; treat it as unverified.
    this mode sets `order: 5` for itself.
 3. **A restart of the desktop app is usually required** before the mode shows up (whether HMR is enabled was not measured).
 4. **Upgrades are manual**: installed plugins do not auto-update; uninstall the old version and install the new one.
-5. The mode's system prompt is large (`PROMPT.md`, 14691 characters / 8664 CJK characters) and is **loaded on every
-   request**; trimming it is planned for a later version.
+5. The mode's system prompt is large (`PROMPT.md`, **21,648 characters / 12,419 CJK characters**, 435 lines) and is
+   **loaded on every request**; trimming it is planned for a later version.
 6. **The mode only plans.** If you ask it to implement something, it will refuse — that is the design, not a bug.
+7. **Token estimates are calibrated, not measured.** They come from a static formula scaled by a measured factor;
+   switching models or changing conversation length will shift them. Their purpose is to tell you **whether a task
+   needs splitting**, not to reconcile an actual bill.
 
 ---
 
@@ -222,7 +232,10 @@ work in principle — but it has **not been verified**; treat it as unverified.
   letting that source run arbitrary compositions on your machine.**
 - This repository's bundle ships **exactly one local JavaScript file**
   (`plugins/token-estimator/index.js`, the token estimator): plain ESM, **zero third-party dependencies**, importing
-  only `node:` built-ins. **Read it before installing** (530 lines, commented in Chinese).
+  only `node:` built-ins. **Read it before installing** (578 lines, commented in Chinese).
+- The new flow-chart template (`skills/planning-templates/assets/task-flow.html`) is **completely self-contained**:
+  no CDN, no remote fonts, no external script sources; the state you change by clicking is written **only to your
+  local browser's `localStorage`** — never uploaded, never fetched.
 - The mode **never writes outside your workspace**; that boundary is hard-coded as constraint ⑪ in its prompt.
 - **Pre-open-source privacy gate**: this repository ships a privacy/credential scanner (`tools/privacy-*`).
   The rule is documented in [`docs/优化提示词/02-开源前隐私规范.md`](docs/优化提示词/02-开源前隐私规范.md) and is

@@ -28,11 +28,12 @@
 presets/
 ├── README.md                       ← 本文件
 ├── task-planning-bundle/           ← 新版交付物（0.2.x）
-│   ├── package.json                #   dsh.bundle.patch → ./cordis.patch.yml
-│   ├── cordis.patch.yml            #   insert: @deepseek-ai/dsh-agent-preset（task-planning）
-│   ├── PROMPT.md                   #   模式系统提示词正文（任务 04）
-│   ├── plugins/token-estimator/    #   本地工具插件：estimate_tokens / usage_report（任务 03）
-│   ├── skills/planning-templates/  #   规划文档模板 skill：5 类骨架（任务 05）
+│   ├── package.json                #   dsh.bundle.patch → ./cordis.patch.yml（version 1.3.0）
+│   ├── cordis.patch.yml            #   insert: @deepseek-ai/dsh-agent-preset（task-planning）+ touch 记录
+│   ├── PROMPT.md                   #   模式系统提示词正文（任务 04，哨兵 v11）
+│   ├── plugins/token-estimator/    #   本地工具插件：estimate_tokens / usage_report（任务 03，含 ×20 校准）
+│   ├── skills/planning-templates/  #   规划文档模板 skill：5 类骨架 + 骨架六流程图（任务 05 / 12）
+│   │   └── assets/task-flow.html   #   任务执行流程图模板（单文件零外链，只换 window.TASK_FLOW_DATA；产出为项目里的 docs/工作流程/00-任务执行流程图.html）
 │   └── README.md                   #   人工安装/卸载/更新步骤与硬约束
 └── task-planning/                  ← 旧机制产物（0.1.x，本机无效）
     ├── preset.yml

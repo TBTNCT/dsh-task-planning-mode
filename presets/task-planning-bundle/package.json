@@ -1,6 +1,6 @@
 {
   "name": "dsh-task-planning-preset",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "DSH「任务规划」模式：以声明式 preset 注册一个只做规划、自己不动手实现的 Agent 组合",
   "keywords": [
     "dsh",
